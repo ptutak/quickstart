@@ -35,7 +35,7 @@ entity Host extends ManagedDevice:
     os          os
 end
 
-implement Host using none
+implement Host using hostDefaults
 
 index Host(name)
 
@@ -148,4 +148,8 @@ implement HostConfig using std::none
 # File      requires Service    when File.host      == Service.host
 # Directory requires File       when Directory.host == File.host
 # Package   requires File       when Package.host   == File.host
+
+implementation hostDefaults:
+    HostConfig(host = self)
+end
 
