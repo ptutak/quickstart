@@ -125,6 +125,18 @@ Host host [1] -- [0:] Directory directories
 
 index Directory(host, path)
 
+entity Symlink:
+    """
+        A symbolic link on the filesystem
+    """
+    string source
+    string target
+end
+
+implement Symlink using std::none
+
+Host host [1] -- [0:] Symlink symlinks
+
 # define an enumeration of operating systems
 enum os with parent root as "unix", "windows"
 enum os with parent "unix" as "linux", "solaris", "freebsd", "openbsd", "macos"
