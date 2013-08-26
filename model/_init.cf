@@ -129,8 +129,9 @@ entity Symlink:
     """
         A symbolic link on the filesystem
     """
-    string source
-    string target
+    string  source
+    string  target
+    bool    purged = false
 end
 
 implement Symlink using std::none
