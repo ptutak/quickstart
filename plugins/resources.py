@@ -20,6 +20,7 @@
 from Imp.resources import Resource, resource, ResourceNotFoundExcpetion
 from Imp.agent.handler import provider, ResourceHandler
 from Imp.execute.util import Unknown
+from Imp.export import resource_to_id
 
 import re, logging, urllib
 
@@ -545,3 +546,9 @@ class SymlinkProvider(ResourceHandler):
 
         return changed
 
+@resource_to_id("vm::Host")                                                           
+def vm_to_id(resource):    
+    """    
+        Convert a resource to an id    
+    """    
+    return "vm::Host[%s,hostname=%s]" % (resource.iaas.name, resource.name) 
