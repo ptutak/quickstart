@@ -86,7 +86,7 @@ class Symlink(Resource):
     fields = ("source", "target", "purged")
 
 
-@provider("std::File")
+@provider("std::File", name = "posix_file")
 class PosixFileProvider(ResourceHandler):
     """
         This handler can deploy files on a unix system
@@ -157,7 +157,7 @@ class PosixFileProvider(ResourceHandler):
 
         return changed
 
-@provider("std::Service")
+@provider("std::Service", name = "systemd")
 class SystemdService(ResourceHandler):
     """
         A handler for services on systems that use systemd
@@ -237,7 +237,7 @@ class SystemdService(ResourceHandler):
 
         return changed
 
-@provider("std::Service")
+@provider("std::Service", name = "redhat_service")
 class ServiceService(ResourceHandler):
     """
         A handler for services on systems that use service
@@ -313,7 +313,7 @@ class ServiceService(ResourceHandler):
 
         return changed
 
-@provider("std::Package")
+@provider("std::Package", name = "yum")
 class YumPackage(ResourceHandler):
     """
         A Package handler that uses yum
@@ -401,7 +401,7 @@ class YumPackage(ResourceHandler):
         return changes
 
     def _result(self, output):
-        if len(output[1].strip()):
+        if "Error:" in output[1].strip():
             raise Exception("Yum failed: " + output[1])
 
     def do_changes(self, resource):
@@ -422,7 +422,7 @@ class YumPackage(ResourceHandler):
 
         return changed
 
-@provider("std::Directory")
+@provider("std::Directory", name = "posix_directory")
 class DirectoryHandler(ResourceHandler):
     """
         A handler for creating directories
@@ -480,7 +480,7 @@ class DirectoryHandler(ResourceHandler):
 
         return changed
 
-@provider("std::Symlink")
+@provider("std::Symlink", name = "posix_symlink")
 class SymlinkProvider(ResourceHandler):
     """
         This handler can deploy symlinks on unix systems
@@ -551,4 +551,4 @@ def vm_to_id(resource):
     """    
         Convert a resource to an id    
     """    
-    return "vm::Host[%s,hostname=%s]" % (resource.iaas.name, resource.name) 
+    return "vm::Host[%s,name=%s]" % (resource.iaas.name, resource.name) 
