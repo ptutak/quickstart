@@ -401,8 +401,9 @@ class YumPackage(ResourceHandler):
         return changes
 
     def _result(self, output):
-        if "Error:" in output[1].strip():
-            raise Exception("Yum failed: " + output[1])
+        error_msg = output[1].strip()
+        if "Error:" in error_msg and "Nothing to do" not in error_msg:
+            raise Exception("Yum failed: " + error_msg)
 
     def do_changes(self, resource):
         changes = self.list_changes(resource)
