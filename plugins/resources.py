@@ -69,7 +69,8 @@ class Directory(Resource):
     """
         A directory on a filesystem
     """
-    fields = ("path", "owner", "group", "mode", "purged", "reload")
+    fields = ("path", "owner", "group", "permissions", "purged", "reload")
+    map = {"permissions" : lambda y, x: x.mode}
 
 @resource("std::Package", agent = "host.name", id_attribute = "name")
 class Package(Resource):
