@@ -31,22 +31,22 @@ def store_file(exporter, obj):
     content = obj.content
     if isinstance(content, Unknown):
         return content
-    
+
     elif content.startswith(FILE_SOURCE):
         parts = urllib.parse.urlparse(content[len(FILE_SOURCE):])
-        
+
         if parts.scheme == "file":
             with open(parts.path, "rb") as fd:
                 content = fd.read()
-            
+
         elif parts.scheme == "tmp":
             with open(parts.path, "rb") as fd:
                 content = fd.read()
-            
+
         else:
-            raise Exception("%s scheme not support for file %s" % 
+            raise Exception("%s scheme not support for file %s" %
                             (parts.scheme, parts.path))
-        
+
     return exporter.upload_file(content)
 
 @resource("std::Service", agent = "host.name", id_attribute = "name")
@@ -55,29 +55,29 @@ class Service(Resource):
         This class represents a service on a system.
     """
     fields = ("onboot", "state", "name")
-    
+
 @resource("std::File", agent = "host.name", id_attribute = "path")
 class File(Resource):
     """
         A file on a filesystem
     """
-    fields = ("path", "owner", "hash", "group", "mode", "purged", "reload")
-    map = {"hash" : store_file}
-    
+    fields = ("path", "owner", "hash", "group", "permissions", "purged", "reload")
+    map = {"hash" : store_file, "permissions" : lambda y, x: x.mode}
+
 @resource("std::Directory", agent = "host.name", id_attribute = "path")
 class Directory(Resource):
     """
         A directory on a filesystem
     """
     fields = ("path", "owner", "group", "mode", "purged", "reload")
-    
+
 @resource("std::Package", agent = "host.name", id_attribute = "name")
 class Package(Resource):
     """
         A software package installed on an operating system.
     """
     fields = ("name", "state", "reload")
-    
+
 @resource("std::Symlink", agent = "host.name", id_attribute = "target")
 class Symlink(Resource):
     """
@@ -105,7 +105,7 @@ class PosixFileProvider(ResourceHandler):
 
             for key,value in self._io.file_stat(resource.path).items():
                 setattr(current, key, value)
-                
+
         return current
 
     def list_changes(self, desired):
@@ -118,7 +118,7 @@ class PosixFileProvider(ResourceHandler):
 
             else:
                 return {"purged": (False, True)}
-        
+
         return changes
 
     def _get_content(self, resource):
@@ -547,9 +547,9 @@ class SymlinkProvider(ResourceHandler):
 
         return changed
 
-@resource_to_id("vm::Host")                                                           
-def vm_to_id(resource):    
-    """    
-        Convert a resource to an id    
-    """    
-    return "vm::Host[%s,name=%s]" % (resource.iaas.name, resource.name) 
+@resource_to_id("vm::Host")
+def vm_to_id(resource):
+    """
+        Convert a resource to an id
+    """
+    return "vm::Host[%s,name=%s]" % (resource.iaas.name, resource.name)
