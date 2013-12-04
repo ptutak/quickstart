@@ -44,7 +44,7 @@ typedef hoststring as string matching /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$/
 entity File:
     """
         This represents a file on the filesystem
-        
+
         :param path The path of the file
         :param mode The permissions of the file
         :param owner The owner of the file
@@ -87,9 +87,9 @@ Host host [1] -- [0:] Service services
 index Service(host, name)
 
 # the state of a package
-typedef package_state as string matching self == "installed" or 
+typedef package_state as string matching self == "installed" or
                                          self == "removed" or self == "latest"
-                                         
+
 entity Package:
     """
         A software package installed on a managed device.
@@ -145,7 +145,7 @@ enum os with parent "unix" as "linux", "solaris", "freebsd", "openbsd", "macos"
 entity HostConfig:
     """
         This represents generic configuration for a host. This entity is used
-        by other modules to include their host specific configuration. This 
+        by other modules to include their host specific configuration. This
         should be instantiated in the implementation of std::Host or subclasses.
         This host specific configuration cannot be included by just implementing
         std::Host because possibly subclasses of std::Host are instantiated and
@@ -162,7 +162,7 @@ implement HostConfig using std::none
 # Directory requires File       when Directory.host == File.host
 # Package   requires File       when Package.host   == File.host
 
-implementation hostDefaults:
+implementation hostDefaults for std::Host:
     HostConfig(host = self)
 end
 
