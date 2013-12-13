@@ -134,7 +134,7 @@ class PosixFileProvider(ResourceHandler):
 
         if "purged" in changes and changes["purged"][1] == True:
             self._io.remove(resource.path)
-            return
+            return True
 
         if "hash" in changes:
             data = self._get_content(resource)
@@ -185,7 +185,7 @@ class SystemdService(ResourceHandler):
         else:
             current.state = "stopped"
 
-        current.enabled = enabled
+        current.onboot = enabled
         return current
 
     def list_changes(self, desired):
@@ -223,10 +223,10 @@ class SystemdService(ResourceHandler):
 
             changed = True
 
-        if "enabled" in changes and changes["enabled"][0] != changes["enabled"][1]:
-            action = "enable"
+        if "onboot" in changes and changes["onboot"][0] != changes["onboot"][1]:
+            action = "onboot"
 
-            if changes["enabled"][1] == False:
+            if changes["onboot"][1] == False:
                 action = "disable"
 
             result = self._io.run("/usr/bin/systemctl",
