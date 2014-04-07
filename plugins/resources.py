@@ -62,7 +62,7 @@ class File(Resource):
         A file on a filesystem
     """
     fields = ("path", "owner", "hash", "group", "permissions", "purged", "reload")
-    map = {"hash" : store_file, "permissions" : lambda y, x: x.mode}
+    map = {"hash" : store_file, "permissions" : lambda y, x: int(x.mode)}
 
 @resource("std::Directory", agent = "host.name", id_attribute = "path")
 class Directory(Resource):
@@ -70,7 +70,7 @@ class Directory(Resource):
         A directory on a filesystem
     """
     fields = ("path", "owner", "group", "permissions", "purged", "reload")
-    map = {"permissions" : lambda y, x: x.mode}
+    map = {"permissions" : lambda y, x: int(x.mode)}
 
 @resource("std::Package", agent = "host.name", id_attribute = "name")
 class Package(Resource):
@@ -553,3 +553,4 @@ def vm_to_id(resource):
         Convert a resource to an id
     """
     return "vm::Host[%s,name=%s]" % (resource.iaas.name, resource.name)
+

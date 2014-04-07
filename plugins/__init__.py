@@ -21,7 +21,7 @@ from Imp.plugins.base import plugin, Context
 from Imp.export import dependency_manager
 from Imp.resources import Resource
 
-import hashlib, os
+import hashlib, os, random
 
 @plugin
 def unique_file(prefix : "string", seed : "string", suffix : "string") -> "string":
@@ -45,3 +45,47 @@ def dir_before_file(model, resources):
                 if dir_res is not None and os.path.dirname(resource.path) == dir_res.path:
                     #Make the File resource require the directory
                     resource.requires.add(dir_res.id)
+
+@plugin
+def generate_password(context : Context, pw_id : "string", length : "number" = 20) -> "string":
+    """
+    Generate a new random password and store it in the data directory of the
+    project. On next invocations the stored password will be used.
+
+    :param pw_id string The id of the password to identify it.
+    :param length number The length of the password, default length is 20
+    """
+    data_dir = context.get_data_dir()
+    pw_file = os.path.join(data_dir, "passwordfile.txt")
+
+    if "=" in pw_id:
+        raise Exception("The password id cannot contain =")
+
+    records = {}
+    if os.path.exists(pw_file):
+        with open(pw_file, "r") as fd:
+
+            for line in fd.readlines():
+                line = line.strip()
+                i = line.index("=")
+
+                try:
+                    records[line[:i]] = line[i+1:]
+                except ValueError:
+                    pass
+
+            if pw_id in records:
+                return records[pw_id]
+
+    rnd = random.SystemRandom()
+    pw = "".join([chr(rnd.randint(33, 126)) for x in range(20)])
+
+    # store the new value
+    records[pw_id] = pw
+
+    with open(pw_file, "w+") as fd:
+        for key,value in records.items():
+            fd.write("%s=%s\n" % (key, value))
+
+        return pw
+
