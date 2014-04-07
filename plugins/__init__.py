@@ -18,9 +18,30 @@
 """
 
 from Imp.plugins.base import plugin, Context
+from Imp.export import dependency_manager
+from Imp.resources import Resource
 
-import hashlib
+import hashlib, os
 
 @plugin
 def unique_file(prefix : "string", seed : "string", suffix : "string") -> "string":
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
+
+@dependency_manager
+def dir_before_file(model, resources):
+    """
+        If a file is defined on a host, then make the file depend on its parent directory
+    """
+    # loop over all resources to find files
+    for _id, resource in resources.items():
+        res_class = resource.model.__class__
+        if resource.model.__module__ == "std" and res_class.__name__ == "File":
+            model = resource.model
+            host = model.host
+
+
+            for dir in host.directories:
+                dir_res = Resource.get_resource(dir)
+                if dir_res is not None and os.path.dirname(resource.path) == dir_res.path:
+                    #Make the File resource require the directory
+                    resource.requires.add(dir_res.id)
