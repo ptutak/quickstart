@@ -19,10 +19,11 @@
 
 from Imp.plugins.base import plugin, Context
 
-import hashlib, os, random
+import hashlib, os, random, re
+
 
 @plugin
-def unique_file(prefix : "string", seed : "string", suffix : "string") -> "string":
+def unique_file(prefix : "string", seed : "string", suffix : "string", length : "number" = 20) -> "string":
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
 
 @plugin
@@ -39,25 +40,29 @@ def generate_password(context : Context, pw_id : "string", length : "number" = 2
 
     if "=" in pw_id:
         raise Exception("The password id cannot contain =")
-    
+
     records = {}
     if os.path.exists(pw_file):
         with open(pw_file, "r") as fd:
-            
+
             for line in fd.readlines():
                 line = line.strip()
                 i = line.index("=")
-                
+
                 try:
                     records[line[:i]] = line[i+1:]
                 except ValueError:
-                    pass            
+                    pass
 
             if pw_id in records:
                 return records[pw_id]
 
     rnd = random.SystemRandom()
-    pw = "".join([chr(rnd.randint(33, 126)) for x in range(20)])
+    pw = ""
+    while len(pw) < length:
+        x = chr(rnd.randint(33, 126))
+        if re.match("[A-Za-z0-9]", x) is not None:
+            pw += x
 
     # store the new value
     records[pw_id] = pw
