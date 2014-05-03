@@ -376,7 +376,7 @@ class YumPackage(ResourceHandler):
 
         if len(lines) > 0:
             parts = re.search("([^\s]+)\s+([^\s]+)\s+([^\s]+)", lines[0])
-            if parts is not None:
+            if parts is not None and not lines[0].startswith("Security:"):
                 version_str = parts.groups()[1]
                 version, release = version_str.split("-")
 
