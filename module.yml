@@ -1,0 +1,4 @@
+name: std
+license: Apache 2.0
+author: Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
+source: git@github.com:bartv/imp-std
