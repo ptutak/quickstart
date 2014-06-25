@@ -176,9 +176,9 @@ class SystemdService(ResourceHandler):
             raise ResourceNotFoundExcpetion("The %s service does not exist" % resource.name)
 
         running = self._io.run("/usr/bin/systemctl",
-                            ["is-active", "%s.service" % resource.name])[0] == "active"
+                            ["is-active", "%s.service" % resource.name])[2] == 0
         enabled = self._io.run("/usr/bin/systemctl",
-                            ["is-enabled", "%s.service" % resource.name])[0] == "enabled"
+                            ["is-enabled", "%s.service" % resource.name])[2] == 0
 
         if running:
             current.state = "running"

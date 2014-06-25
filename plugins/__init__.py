@@ -38,7 +38,7 @@ def unique_file(prefix : "string", seed : "string", suffix : "string", length : 
 
 class TemplateResult(str):
     pass
- 
+
 class TemplateStatement(CallStatement):
     """
         Evaluates a template
@@ -48,13 +48,13 @@ class TemplateStatement(CallStatement):
         self._template = template_file
         self._content = template_content
         self._env = env
-         
+
     def is_file(self):
         """
             Use a file?
         """
         return self._template is not None and self._content is None
-         
+
     def _get_variables(self):
         """
             Get all variables that are unsresolved
@@ -63,22 +63,22 @@ class TemplateStatement(CallStatement):
             source = self._env.loader.get_source(self._env, self._template)[0]
         else:
             source = self._content
-             
+
         ast = self._env.parse(source)
         variables = meta.find_undeclared_variables(ast)
         return variables
-         
+
     def references(self):
         """
             @see DynamicStatement#references
         """
         refs = []
-         
+
         for var in self._get_variables():
             refs.append((str(var), Reference(str(var))))
- 
+
         return refs
-     
+
     def actions(self, state):
         """
             A template uses all variables that are not resolved inside the
@@ -86,53 +86,53 @@ class TemplateStatement(CallStatement):
         """
         result = state.get_result_reference()
         actions = [("set", result)]
-         
+
         for var in self._get_variables():
             actions.append(("get", state.get_ref(str(var))))
-         
+
         return actions
-                     
+
     def evaluate(self, state, _local_scope):
-        """ 
+        """
             Execute this function
         """
         TemplateStats.instance = TemplateStats(self._template)
-                 
+
         if self.is_file():
             template = self._env.get_template(self._template)
         else:
             template = Template(self._content)
-         
+
         try:
             variables = {}
             for var in self._get_variables():
                 name = str(var)
                 variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
-                 
+
             value = template.render(variables)
             result = TemplateResult(value)
-             
+
             if TemplateStats.instance is not None:
                 result.stats = TemplateStats.instance.get_stats()
                 result.template = self._template
                 TemplateStats.instance = None
-             
+
             return result
         except UnknownException as e:
             return e.unknown
-     
+
     def __repr__(self):
         return "Template(%s)" % self._template
-     
+
 __TEMPLATE_CTX = None
- 
+
 def reset():
     """
         Reset templating
     """
     jinja2.clear_caches()
     __TEMPLATE_CTX = None
- 
+
 def _get_template_engine(ctx):
     """
         Initialize the template engine environment
@@ -142,28 +142,28 @@ def _get_template_engine(ctx):
         template_dir = os.path.join(path, "templates")
         if os.path.isdir(template_dir):
             loader_map[module] = FileSystemLoader(template_dir)
-     
+
     # init the environment
     env = Environment(loader = PrefixLoader(loader_map))
-     
+
     # register all plugins as filters
     for name, cls in PluginMeta.get_functions().items():
-        env.filters[name] = cls(ctx.compiler, ctx.graph, ctx.scope)
- 
+        env.filters[name.replace("::", ".")] = cls(ctx.compiler, ctx.graph, ctx.scope)
+
     return env
 
 
 @plugin
 def template(ctx : Context, path : "string"):
     """
-        Execute the template in path in the current context. This function will 
+        Execute the template in path in the current context. This function will
         generate a new statement that has dependencies on the used variables.
     """
     jinja_env = _get_template_engine(ctx)
-     
+
     stmt = TemplateStatement(jinja_env, template_file = path)
     stmt.namespace = ["std"]
-     
+
     ctx.emit_statement(stmt)
 
 
@@ -242,7 +242,7 @@ def printf(message : "any"):
 
 @plugin
 def equals(arg1 : "any", arg2 : "any", desc : "string" = None):
-    """ 
+    """
         Compare arg1 and arg2
     """
     if arg1 != arg2:
@@ -270,14 +270,14 @@ def delay(x : "any") -> "any":
 
 @plugin
 def get(ctx : Context, path : "string") -> "any":
-    """ 
+    """
         This function return the variable with given string path
     """
     parts = path.split("::")
-    
+
     module = parts[0:-1]
     cls_name = parts[-1]
-    
+
     var = ctx.scope.get_variable(cls_name, module)
     return var.value
 
@@ -289,7 +289,7 @@ def select(objects : "list", attr : "string") -> "list":
     r = []
     for obj in objects:
         r.append(getattr(obj, attr))
-        
+
     return r
 
 @plugin
@@ -300,7 +300,7 @@ def item(objects : "list", index : "number") -> "list":
     r = []
     for obj in objects:
         r.append(obj[index])
-        
+
     return r
 
 @plugin
@@ -308,15 +308,15 @@ def key_sort(items : "list", key : "string") -> "list":
     """
         Sort an array of object on key
     """
-    return sorted(items, key = attrgetter(key)) 
+    return sorted(items, key = attrgetter(key))
 
 @plugin
 def timestamp(dummy : "any" = None) -> "number":
     """
         Return an integer with the current unix timestamp
-        
+
         @param any: A dummy argument to be able to use this function as a filter
-    """ 
+    """
     return int(time.time())
 
 @plugin
@@ -325,7 +325,7 @@ def capitalize(string : "string") -> "string":
         Capitalize the given string
     """
     return string.capitalize()
-    
+
 @plugin
 def type(obj : "any") -> "any":
     value = obj.value
@@ -338,7 +338,7 @@ def sequence(i : "number") -> "list":
     """
     return list(range(0, int(i)))
 
-@plugin 
+@plugin
 def inlineif(conditional : "bool", a : "any", b : "any") -> "any":
     """
         An inline if
@@ -346,7 +346,7 @@ def inlineif(conditional : "bool", a : "any", b : "any") -> "any":
     if conditional:
         return a
     return b
-    
+
 @plugin
 def at(objects : "list", index : "number") -> "any":
     """
@@ -356,23 +356,23 @@ def at(objects : "list", index : "number") -> "any":
 
 @plugin
 def attr(obj : "any", attr : "string") -> "any":
-    return getattr(obj, attr) 
+    return getattr(obj, attr)
 
 @plugin
-def cm(parameter_value : "any", parameter_name : "string", 
+def cm(parameter_value : "any", parameter_name : "string",
        index : "number" = -1, param_type : "string" = None) -> "any":
     """
-        Use this filter in templates to count the occurence of a parameter  
+        Use this filter in templates to count the occurence of a parameter
     """
     from Imp.stats import TemplateStats
-    
+
     if param_type is None:
         TemplateStats.instance.record_access(parameter_name, parameter_value, -1, index)
     else:
         TemplateStats.instance.record_access(parameter_name, parameter_value, index, param_type)
-    
+
     return parameter_value
-    
+
 @plugin
 def isset(value : "any") -> "bool":
     """
@@ -400,19 +400,19 @@ def first_of(context : Context, value : "list", type_name : "string") -> "any":
     for item in value:
         d = item.type().__definition__
         name = "%s::%s" % (d.namespace, d.name)
-        
+
         if name == type_name:
             return item
-        
+
     return None
 
 @plugin
 def any(item_list : "list", expression : "expression") -> "bool":
-    """ 
+    """
         This method returns true when at least on item evaluates expression
         to true, otherwise it returns false
-        
-        @param expression: An expression that accepts one arguments and 
+
+        @param expression: An expression that accepts one arguments and
             returns true or false
     """
     for item in item_list:
@@ -425,8 +425,8 @@ def all(item_list : "list", expression : "expression") -> "bool":
     """
         This method returns false when at least one item does not evaluate
         expression to true, otherwise it returns true
-        
-        @param expression: An expression that accepts one argument and 
+
+        @param expression: An expression that accepts one argument and
             returns true or false
     """
     for item in item_list:
@@ -443,33 +443,33 @@ def count(item_list : "list") -> "number":
 
 @plugin
 def each(item_list : "list", expression : "expression") -> "list":
-    """ 
+    """
         Iterate over this list executing the expression for each item.
-        
+
         @param expression: An expression that accepts one arguments and
             is evaluated for each item. The returns value of the expression
             is placed in a new list
     """
     new_list = []
-    
+
     for item in item_list:
         value = expression(item)
         new_list.append(value)
-        
+
     return new_list
 
 @plugin
 def order_by(item_list : "list", expression : "expression" = None, comparator : "epxression" = None) -> "list":
-    """ 
-        This operation orders a list using the object returned by 
+    """
+        This operation orders a list using the object returned by
         expression and optionally using the comparator function to determine
         the order.
-        
+
         @param expression: The expression that selects the attributes of the
             items in the source list that are used to determine the order
             of the returned list.
-            
-        @param comparator: An optional expression that compares two items.     
+
+        @param comparator: An optional expression that compares two items.
     """
     expression_cache = {}
     def get_from_cache(item):
@@ -482,7 +482,7 @@ def order_by(item_list : "list", expression : "expression" = None, comparator : 
             data = expression(item)
             expression_cache[item] = data
             return data
-    
+
     def sort_cmp(item_a, item_b):
         """
             A function that uses the optional expressions to sort item_a list
@@ -493,12 +493,12 @@ def order_by(item_list : "list", expression : "expression" = None, comparator : 
         else:
             a_data = item_a
             b_data = item_b
-    
+
         if comparator is not None:
             return comparator(a_data, b_data)
         else:
             return cmp(a_data, b_data)
-    
+
     # sort
     return sorted(item_list, sort_cmp)
 
@@ -512,52 +512,52 @@ def unique(item_list : "list") -> "bool":
         if item in seen:
             return False
         seen.add(item)
-    
+
     return True
 
 @plugin
 def select_attr(item_list : "list", attr : "string") -> "list":
-    """ 
+    """
         This query method projects the list onto a new list by transforming
         the list as defined in the expression.
-        
+
         @param expression: An expression that returns the item that is to be
             included in the resulting list. The first argument of the
             expression is the item in the source sequence.
     """
     new_list = []
-    
+
     if isinstance(attr, str):
         expression = lambda x: getattr(x, attr)
-    
+
     for item in item_list:
         new_list.append(expression(item))
-            
+
     return new_list
 
 @plugin
-def select_many(item_list : "list", expression : "expression", 
+def select_many(item_list : "list", expression : "expression",
                 selector_expression : "expression" = None) -> "list":
     """
         This query method is similar to the select query but it merges
         the results into one list.
-        
+
         @param expresion: An expression that returns the item that is to be
             included in the resulting list. If that item is a list itself
-            it is merged into the result list. The first argument of the 
-            expression is the item in the source sequence. 
-            
-        @param selector_expression: This optional arguments allows to 
+            it is merged into the result list. The first argument of the
+            expression is the item in the source sequence.
+
+        @param selector_expression: This optional arguments allows to
             provide an expression that projects the result of the first
-            expression. This selector expression is equivalent to what the 
-            select method expects. If the returned item of expression is 
+            expression. This selector expression is equivalent to what the
+            select method expects. If the returned item of expression is
             not a list this expression is not applied.
     """
     new_list = []
-    
+
     for item in item_list:
         result = expression(item)
-        
+
         if not hasattr(result, "__iter__"):
             new_list.append(result)
         else:
@@ -566,17 +566,17 @@ def select_many(item_list : "list", expression : "expression",
                     new_list.append(selector_expression(result_item))
             else:
                 new_list.extend(result)
-            
+
     return new_list
 
 @plugin
 def where(item_list : "list", expression : "expression") -> "list":
-    """ 
+    """
         This query method selects the items in the list that evaluate the
         expression to true.
-        
+
         @param expression: An expression that returns true or false
-            to determine if an item from the list is included. The first 
+            to determine if an item from the list is included. The first
             argument of the expression is the item that is to be evaluated.
             The second optional argument is the index of the item in the
             list.
@@ -584,10 +584,10 @@ def where(item_list : "list", expression : "expression") -> "list":
     new_list = []
     for index in range(len(item_list)):
         item = item_list[index]
-        
+
         if expression(item):
             new_list.append(item)
-            
+
     return new_list
 
 @plugin
@@ -595,25 +595,25 @@ def where_compare(item_list : "list", expr_list : "list") -> "list":
     """
         This query selects items in a list but uses the tupples in expr_list
         to select the items.
-        
+
         @param expr_list: A list of tupples where the first item is the attr
             name and the second item in the tupple is the value
     """
     new_list = []
-    
+
     new_expr_list = []
     for i in range(0, len(expr_list), 2):
         new_expr_list.append((expr_list[i], expr_list[i + 1]))
-        
+
     for index in range(len(item_list)):
         item = item_list[index]
-        
+
         for attr, value in new_expr_list:
             if getattr(item, attr) == value:
                 new_list.append(item)
-            
+
     return new_list
-    
+
 
 @plugin
 def flatten(item_list : "list") -> "list":
@@ -627,13 +627,13 @@ def determine_path(ctx, module_dir, path):
         Determine the real path based on the given path
     """
     parts = path.split(os.path.sep)
-    
+
     module_path = ctx.compiler.get_module_path(parts[0])
-    
+
     if module_path is None:
-        raise Exception("Module %s does not exist for path %s" % 
+        raise Exception("Module %s does not exist for path %s" %
                         (parts[0], path))
-    
+
     return os.path.join(module_path, module_dir,
                         os.path.sep.join(parts[1:]))
 
@@ -642,20 +642,20 @@ def get_file_content(ctx, module_dir, path):
         Get the contents of a file
     """
     filename = determine_path(ctx, module_dir, path)
-    
+
     if filename == None:
         raise Exception("%s does not exist" % path)
-    
+
     if not os.path.isfile(filename):
         raise Exception("%s isn't a valid file" % path)
-    
+
     file_fd = open(filename, 'r')
     if file_fd == None:
         raise Exception("Unable to open file %s" % filename)
-    
+
     content = file_fd.read()
     file_fd.close()
-    
+
     return content
 
 @plugin
@@ -674,8 +674,8 @@ def file(ctx : Context, path : "string") -> "string":
     any
     if filename == None:
         raise Exception("%s does not exist" % path)
-    
+
     if not os.path.isfile(filename):
         raise Exception("%s isn't a valid file" % path)
-    
+
     return "imp-module-source:file://" + os.path.abspath(filename)
