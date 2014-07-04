@@ -25,6 +25,7 @@ from Imp.export import dependency_manager
 from Imp.plugins.base import plugin, Context, PluginMeta
 from Imp.resources import Resource
 from Imp.stats import TemplateStats
+from Imp.module import Project
 import hashlib, os, random, re
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 from operator import attrgetter
@@ -628,11 +629,13 @@ def determine_path(ctx, module_dir, path):
     """
     parts = path.split(os.path.sep)
 
-    module_path = ctx.compiler.get_module_path(parts[0])
+    modules = Project.get().modules
 
-    if module_path is None:
+    if parts[0] not in modules:
         raise Exception("Module %s does not exist for path %s" %
                         (parts[0], path))
+
+    module_path = modules[parts[0]]._path
 
     return os.path.join(module_path, module_dir,
                         os.path.sep.join(parts[1:]))
