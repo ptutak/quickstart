@@ -682,3 +682,23 @@ def file(ctx : Context, path : "string") -> "string":
         raise Exception("%s isn't a valid file" % path)
 
     return "imp-module-source:file://" + os.path.abspath(filename)
+
+@plugin
+def familyof(member : "std::OS", family : "string") -> "bool":
+    """
+        Determine if member is a member of the given operating system family
+    """
+    if member.name == family:
+        return True
+
+    parent = member
+    while parent.family is not None:
+        if parent.name == family:
+            return True
+        
+        parent = parent.family
+
+    return False
+
+
+

@@ -32,7 +32,6 @@ entity Host extends ManagedDevice:
     """
         A host models a server of computer in the managed infrastructure
     """
-    os          os
 end
 
 implement Host using hostDefaults
@@ -138,9 +137,28 @@ implement Symlink using std::none
 
 Host host [1] -- [0:] Symlink symlinks
 
-# define an enumeration of operating systems
-enum os with parent root as "unix", "windows"
-enum os with parent "unix" as "linux", "solaris", "freebsd", "openbsd", "macos"
+# define operating systems
+unix = OS(name = "unix")
+windows = OS(name = "windows")
+
+linux = OS(name = "linux", family = unix)
+solaris = OS(name = "solaris", family = unix)
+freebsd = OS(name = "freebsd", family = unix)
+openbsd = OS(name = "openbsd", family = unix)
+macos = OS(name = "macos", family = unix)
+
+entity OS:
+    """
+        Defines an operating system
+    """
+    string name
+    number version = 0
+end
+
+implement OS using std::none
+
+OS os [1] -- [0:] Host host
+OS member [0:] -- [0:1] OS family
 
 entity HostConfig:
     """
