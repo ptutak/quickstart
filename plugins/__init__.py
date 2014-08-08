@@ -26,6 +26,7 @@ from Imp.plugins.base import plugin, Context, PluginMeta
 from Imp.resources import Resource
 from Imp.stats import TemplateStats
 from Imp.module import Project
+from Imp.facts import get_fact
 import hashlib, os, random, re
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 from operator import attrgetter
@@ -700,5 +701,10 @@ def familyof(member : "std::OS", family : "string") -> "bool":
 
     return False
 
-
-
+@plugin
+def getfact(resource : "any", fact_name : "string", default_value : "any" = None):
+    """
+        Retrieve a fact of the given resource
+    """
+    return get_fact(resource, fact_name, default_value)
+    

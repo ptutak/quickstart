@@ -17,12 +17,16 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 """
 
-from Imp.resources import Resource, resource, ResourceNotFoundExcpetion
+import logging
+import re
+import urllib
+
 from Imp.agent.handler import provider, ResourceHandler
 from Imp.execute.util import Unknown
 from Imp.export import resource_to_id
+from Imp.resources import Resource, resource, ResourceNotFoundExcpetion
+from Imp import methods
 
-import re, logging, urllib
 
 LOGGER = logging.getLogger(__name__)
 
@@ -103,13 +107,17 @@ class PosixFileProvider(ResourceHandler):
             current.hash = 0
         else:
             current.hash = self._io.hash_file(resource.path)
+            
+            # upload the previous version for back up and for generating a diff!
+            content = self._io.read_binary(resource.path)
+            result = self._agent._client.call(methods.FileMethod, operation="PUT", id=current.hash, content=content)
 
             for key,value in self._io.file_stat(resource.path).items():
                 setattr(current, key, value)
 
         return current
 
-    def list_changes(self, desired):
+    def _list_changes(self, desired):
         current = self.check_resource(desired)
         changes = self._diff(current, desired)
 
@@ -121,6 +129,17 @@ class PosixFileProvider(ResourceHandler):
                 return {"purged": (False, True)}
 
         return changes
+    
+    def list_changes(self, desired):
+        changes = self._list_changes(desired)
+        if "hash" in changes:
+            # read current content
+            current_content = self._io.read(desired.path)
+            desired_content = self._get_content(desired)
+            
+            #changes["diff"] = (current_content, desired_content)
+        
+        return changes
 
     def _get_content(self, resource):
         """
@@ -129,7 +148,7 @@ class PosixFileProvider(ResourceHandler):
         return self._agent.get_file(resource.hash)
 
     def do_changes(self, resource):
-        changes = self.list_changes(resource)
+        changes = self._list_changes(resource)
         changed = False
 
         if "purged" in changes and changes["purged"][1] == True:
@@ -137,6 +156,7 @@ class PosixFileProvider(ResourceHandler):
             return True
 
         if "hash" in changes:
+            # write the new version
             data = self._get_content(resource)
             self._io.put(resource.path, data)
             changed = True
