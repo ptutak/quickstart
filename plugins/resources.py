@@ -96,10 +96,6 @@ class PosixFileProvider(ResourceHandler):
     """
         This handler can deploy files on a unix system
     """
-    @classmethod
-    def is_available(self, io):
-        return True
-
     def check_resource(self, resource):
         current = resource.clone(purged = False, reload = resource.reload, hash = 0)
         if not self._io.file_exists(resource.path):
@@ -183,9 +179,8 @@ class SystemdService(ResourceHandler):
     """
         A handler for services on systems that use systemd
     """
-    @classmethod
-    def is_available(self, io):
-        return io.file_exists("/usr/bin/systemctl")
+    def available(self, resource):
+        return self._io.file_exists("/usr/bin/systemctl")
 
     def check_resource(self, resource):
         current = resource.clone()
@@ -263,9 +258,9 @@ class ServiceService(ResourceHandler):
     """
         A handler for services on systems that use service
     """
-    @classmethod
-    def is_available(self, io):
-        return io.file_exists("/sbin/chkconfig") and io.file_exists("/sbin/service")
+    def available(self, resource):
+        return (self._io.file_exists("/sbin/chkconfig") and self._io.file_exists("/sbin/service") and 
+                not self._io.file_exists("/usr/bin/systemctl"))
 
     def check_resource(self, resource):
         current = resource.clone()
@@ -339,10 +334,9 @@ class YumPackage(ResourceHandler):
     """
         A Package handler that uses yum
     """
-    @classmethod
-    def is_available(self, io):
-        return (io.file_exists("/usr/bin/rpm") or io.file_exists("/bin/rpm")) \
-            and io.file_exists("/usr/bin/yum")
+    def available(self, resource):
+        return (self._io.file_exists("/usr/bin/rpm") or self._io.file_exists("/bin/rpm")) \
+            and self._io.file_exists("/usr/bin/yum")
 
     def _parse_fields(self, lines):
         props = {}
@@ -451,10 +445,6 @@ class DirectoryHandler(ResourceHandler):
 
         TODO: add recursive operations
     """
-    @classmethod
-    def is_available(self, io):
-        return True
-
     def check_resource(self, resource):
         current = resource.clone(purged = False)
 
@@ -506,9 +496,8 @@ class SymlinkProvider(ResourceHandler):
     """
         This handler can deploy symlinks on unix systems
     """
-    @classmethod
-    def is_available(self, io):
-        return io.file_exists("/usr/bin/ln") or io.file_exists("/bin/ln")
+    def available(self, resource):
+        return self._io.file_exists("/usr/bin/ln") or self._io.file_exists("/bin/ln")
 
     def check_resource(self, resource):
         current = resource.clone(purged = False)

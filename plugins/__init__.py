@@ -380,7 +380,7 @@ def isset(value : "any") -> "bool":
     """
         Returns true if a value has been set
     """
-    obj = value._get_instance().get_value()
+    obj = value._get_instance()
     return not isinstance(obj, Optional)
 
 @plugin
