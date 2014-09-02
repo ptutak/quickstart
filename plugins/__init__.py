@@ -188,6 +188,29 @@ def dir_before_file(model, resources):
                     #Make the File resource require the directory
                     resource.requires.add(dir_res.id)
 
+
+def get_passwords(pw_file):
+    records = {}
+    if os.path.exists(pw_file):
+        with open(pw_file, "r") as fd:
+
+            for line in fd.readlines():
+                line = line.strip()
+                if len(line) > 2:
+                    i = line.index("=")
+
+                    try:
+                        records[line[:i].strip()] = line[i+1:].strip()
+                    except ValueError:
+                        pass
+
+    return records
+
+def save_passwords(pw_file, records):
+    with open(pw_file, "w+") as fd:
+        for key,value in records.items():
+            fd.write("%s=%s\n" % (key, value))
+
 @plugin
 def generate_password(context : Context, pw_id : "string", length : "number" = 20) -> "string":
     """
@@ -203,21 +226,10 @@ def generate_password(context : Context, pw_id : "string", length : "number" = 2
     if "=" in pw_id:
         raise Exception("The password id cannot contain =")
 
-    records = {}
-    if os.path.exists(pw_file):
-        with open(pw_file, "r") as fd:
+    records = get_passwords(pw_file)
 
-            for line in fd.readlines():
-                line = line.strip()
-                i = line.index("=")
-
-                try:
-                    records[line[:i]] = line[i+1:]
-                except ValueError:
-                    pass
-
-            if pw_id in records:
-                return records[pw_id]
+    if pw_id in records:
+        return records[pw_id]
 
     rnd = random.SystemRandom()
     pw = ""
@@ -228,12 +240,31 @@ def generate_password(context : Context, pw_id : "string", length : "number" = 2
 
     # store the new value
     records[pw_id] = pw
+    save_passwords(pw_file, records)
 
-    with open(pw_file, "w+") as fd:
-        for key,value in records.items():
-            fd.write("%s=%s\n" % (key, value))
+    return pw
 
-        return pw
+
+@plugin
+def password(context : Context, pw_id : "string") -> "string":
+    """
+        Retrieve the given password from a password file. It raises an exception when a password is not found
+        
+        :param pw_id string The id of the password to identify it.
+    """
+    data_dir = context.get_data_dir()
+    pw_file = os.path.join(data_dir, "passwordfile.txt")
+
+    if "=" in pw_id:
+        raise Exception("The password id cannot contain =")
+
+    records = get_passwords(pw_file)
+
+    if pw_id in records:
+        return records[pw_id]
+
+    else:
+        raise Exception("Password %s does not exist in file %s" % (pw_id, pw_file))
 
 @plugin("print")
 def printf(message : "any"):
