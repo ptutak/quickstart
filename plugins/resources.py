@@ -128,13 +128,6 @@ class PosixFileProvider(ResourceHandler):
     
     def list_changes(self, desired):
         changes = self._list_changes(desired)
-        if "hash" in changes:
-            # read current content
-            current_content = self._io.read(desired.path)
-            desired_content = self._get_content(desired)
-            
-            #changes["diff"] = (current_content, desired_content)
-        
         return changes
 
     def _get_content(self, resource):
