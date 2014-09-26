@@ -103,7 +103,7 @@ class PosixFileProvider(ResourceHandler):
             current.hash = 0
         else:
             current.hash = self._io.hash_file(resource.path)
-            
+
             # upload the previous version for back up and for generating a diff!
             content = self._io.read_binary(resource.path)
             result = self._agent._client.call(methods.FileMethod, operation="PUT", id=current.hash, content=content)
@@ -125,7 +125,7 @@ class PosixFileProvider(ResourceHandler):
                 return {"purged": (False, True)}
 
         return changes
-    
+
     def list_changes(self, desired):
         changes = self._list_changes(desired)
         return changes
@@ -232,7 +232,7 @@ class SystemdService(ResourceHandler):
             changed = True
 
         if "onboot" in changes and changes["onboot"][0] != changes["onboot"][1]:
-            action = "onboot"
+            action = "enable"
 
             if changes["onboot"][1] == False:
                 action = "disable"
@@ -252,7 +252,7 @@ class ServiceService(ResourceHandler):
         A handler for services on systems that use service
     """
     def available(self, resource):
-        return (self._io.file_exists("/sbin/chkconfig") and self._io.file_exists("/sbin/service") and 
+        return (self._io.file_exists("/sbin/chkconfig") and self._io.file_exists("/sbin/service") and
                 not self._io.file_exists("/usr/bin/systemctl"))
 
     def check_resource(self, resource):
