@@ -20,6 +20,7 @@
 import logging
 import re
 import urllib
+import os
 
 from Imp.agent.handler import provider, ResourceHandler
 from Imp.execute.util import Unknown
@@ -146,9 +147,14 @@ class PosixFileProvider(ResourceHandler):
 
         if "hash" in changes:
             # write the new version
-            data = self._get_content(resource)
-            self._io.put(resource.path, data)
-            changed = True
+            dir_name = os.path.dirname(resource.path)
+
+            if self._io.file_exists(dir_name):
+                data = self._get_content(resource)
+                self._io.put(resource.path, data)
+                changed = True
+            else:
+                raise Exception("Parent of %s does not exist, unable to write file." % resource.path)                                
 
         if "permissions" in changes or ("purged" in changes and changes["purged"][0]):
             mode = int(str(int(resource.permissions)), 8)
