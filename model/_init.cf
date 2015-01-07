@@ -133,6 +133,7 @@ entity Symlink:
     string  source
     string  target
     bool    purged = false
+    bool    reload = false
 end
 
 implement Symlink using std::none

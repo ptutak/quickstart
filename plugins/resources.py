@@ -89,7 +89,7 @@ class Symlink(Resource):
     """
         A symbolic link on the filesystem
     """
-    fields = ("source", "target", "purged")
+    fields = ("source", "target", "purged", "reload")
 
 
 @provider("std::File", name = "posix_file")
