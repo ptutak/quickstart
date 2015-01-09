@@ -21,11 +21,11 @@ import re
 import urllib
 import os
 
-from Imp.agent.handler import provider, ResourceHandler
-from Imp.execute.util import Unknown
-from Imp.export import resource_to_id
-from Imp.resources import Resource, resource, ResourceNotFoundExcpetion
-from Imp import methods
+from impera.agent.handler import provider, ResourceHandler
+from impera.execute.util import Unknown
+from impera.export import resource_to_id
+from impera.resources import Resource, resource, ResourceNotFoundExcpetion
+from impera import methods
 
 
 LOGGER = logging.getLogger(__name__)
@@ -153,7 +153,7 @@ class PosixFileProvider(ResourceHandler):
                 self._io.put(resource.path, data)
                 changed = True
             else:
-                raise Exception("Parent of %s does not exist, unable to write file." % resource.path)                                
+                raise Exception("Parent of %s does not exist, unable to write file." % resource.path)
 
         if "permissions" in changes or ("purged" in changes and changes["purged"][0]):
             mode = int(str(int(resource.permissions)), 8)

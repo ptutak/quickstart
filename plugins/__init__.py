@@ -16,16 +16,16 @@
     Contect: bart@impera.io
 """
 
-from Imp.ast.statements import CallStatement
-from Imp.ast.variables import Reference
-from Imp.execute.proxy import DynamicProxy, UnknownException
-from Imp.execute.util import Optional
-from Imp.export import dependency_manager
-from Imp.plugins.base import plugin, Context, PluginMeta
-from Imp.resources import Resource
-from Imp.stats import TemplateStats
-from Imp.module import Project
-from Imp.facts import get_fact
+from impera.ast.statements import CallStatement
+from impera.ast.variables import Reference
+from impera.execute.proxy import DynamicProxy, UnknownException
+from impera.execute.util import Optional
+from impera.export import dependency_manager
+from impera.plugins.base import plugin, Context, PluginMeta
+from impera.resources import Resource
+from impera.stats import TemplateStats
+from impera.module import Project
+from impera.facts import get_fact
 import hashlib, os, random, re
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 from operator import attrgetter
@@ -248,7 +248,7 @@ def generate_password(context : Context, pw_id : "string", length : "number" = 2
 def password(context : Context, pw_id : "string") -> "string":
     """
         Retrieve the given password from a password file. It raises an exception when a password is not found
-        
+
         :param pw_id string The id of the password to identify it.
     """
     data_dir = context.get_data_dir()
@@ -396,7 +396,7 @@ def cm(parameter_value : "any", parameter_name : "string",
     """
         Use this filter in templates to count the occurence of a parameter
     """
-    from Imp.stats import TemplateStats
+    from impera.stats import TemplateStats
 
     if param_type is None:
         TemplateStats.instance.record_access(parameter_name, parameter_value, -1, index)
@@ -726,7 +726,7 @@ def familyof(member : "std::OS", family : "string") -> "bool":
     while parent.family is not None:
         if parent.name == family:
             return True
-        
+
         parent = parent.family
 
     return False
@@ -737,4 +737,4 @@ def getfact(resource : "any", fact_name : "string", default_value : "any" = None
         Retrieve a fact of the given resource
     """
     return get_fact(resource, fact_name, default_value)
-    
+
