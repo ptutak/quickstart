@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-    Contect: bart@impera.io
+    Contact: bart@impera.io
 """
 
 import logging
@@ -105,7 +105,7 @@ class PosixFileProvider(ResourceHandler):
             current.hash = self._io.hash_file(resource.path)
 
             # upload the previous version for back up and for generating a diff!
-            content = self._io.read_binary(resource.path)
+            content = self._io.read_binary(resource.path).decode('utf-8')
             result = self._agent._client.call(methods.FileMethod, operation="PUT", id=current.hash, content=content)
 
             for key,value in self._io.file_stat(resource.path).items():
@@ -156,11 +156,10 @@ class PosixFileProvider(ResourceHandler):
                 raise Exception("Parent of %s does not exist, unable to write file." % resource.path)
 
         if "permissions" in changes or ("purged" in changes and changes["purged"][0]):
-            mode = int(str(int(resource.permissions)), 8)
             if not self._io.file_exists(resource.path):
                 raise Exception("Cannot change permissions of %s because does not exist" % resource.path)
 
-            self._io.chmod(resource.path, mode)
+            self._io.chmod(resource.path, str(resource.permissions))
             changed = True
 
         if "owner" in changes or "group" in changes or ("purged" in changes and changes["purged"][0]):
@@ -479,7 +478,7 @@ class DirectoryHandler(ResourceHandler):
                 self._io.mkdir(resource.path)
 
         if "permissions" in changes or ("purged" in changes and changes["purged"][0]):
-            mode = int(str(int(resource.permissions)), 8)
+            mode = str(resource.permissions)
             self._io.chmod(resource.path, mode)
             changed = True
 

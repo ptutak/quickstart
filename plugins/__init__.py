@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-    Contect: bart@impera.io
+    Contact: bart@impera.io
 """
 
 from impera.ast.statements import CallStatement
@@ -410,8 +410,7 @@ def isset(value : "any") -> "bool":
     """
         Returns true if a value has been set
     """
-    obj = value._get_instance()
-    return not isinstance(obj, Optional)
+    return value is not None
 
 @plugin
 def bootstrap(context : Context) -> "bool":
