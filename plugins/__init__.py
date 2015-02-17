@@ -336,10 +336,12 @@ def item(objects : "list", index : "number") -> "list":
     return r
 
 @plugin
-def key_sort(items : "list", key : "string") -> "list":
+def key_sort(items : "list", key : "any") -> "list":
     """
         Sort an array of object on key
     """
+    if isinstance(key, tuple):
+        return sorted(items, key = attrgetter(*key))
     return sorted(items, key = attrgetter(key))
 
 @plugin
@@ -652,6 +654,16 @@ def flatten(item_list : "list") -> "list":
         Flatten this list
     """
     return list(chain.from_iterable(item_list))
+
+@plugin
+def split(string_list: "string", delim: "string") -> "list":
+    """
+        Split the given string into a list
+
+        :param string_list: The list to split into parts
+        :param delim: The delimeter to split the text by
+    """
+    return string_list.split(delim)
 
 def determine_path(ctx, module_dir, path):
     """
