@@ -19,7 +19,7 @@
 from impera.ast.statements import CallStatement
 from impera.ast.variables import Reference
 from impera.execute.proxy import DynamicProxy, UnknownException
-from impera.execute.util import Optional
+from impera.execute.util import Optional, Unknown
 from impera.export import dependency_manager
 from impera.plugins.base import plugin, Context, PluginMeta
 from impera.resources import Resource
@@ -121,6 +121,12 @@ class TemplateStatement(CallStatement):
             return result
         except UnknownException as e:
             return e.unknown
+        
+        except TypeError as e:
+            if e.args[0].startswith("'Unknown'"):
+                return Unknown(source=None)
+            
+            raise e
 
     def __repr__(self):
         return "Template(%s)" % self._template
