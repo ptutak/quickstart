@@ -2,4 +2,4 @@ author: Bart Vanbrabant <bart@impera.io>
 license: Apache 2.0
 name: std
 source: git@github.com:impera-io/std
-version: 0.4.6
+version: 0.4.7

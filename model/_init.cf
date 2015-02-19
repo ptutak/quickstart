@@ -18,7 +18,7 @@
 
 typedef uuid as string matching /[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}/
 
-implementation none:
+implementation none for std::Entity:
 
 end
 
