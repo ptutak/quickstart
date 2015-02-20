@@ -16,35 +16,42 @@
     Contact: bart@impera.io
 """
 
+import hashlib
+import os
+import random
+import re
+import time
+from operator import attrgetter
+from itertools import chain
+
 from impera.ast.statements import CallStatement
 from impera.ast.variables import Reference
 from impera.execute.proxy import DynamicProxy, UnknownException
-from impera.execute.util import Optional, Unknown
+from impera.execute.util import Unknown
 from impera.export import dependency_manager
 from impera.plugins.base import plugin, Context, PluginMeta
 from impera.resources import Resource
 from impera.stats import TemplateStats
 from impera.module import Project
 from impera.facts import get_fact
-import hashlib, os, random, re
+
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
-from operator import attrgetter
-import os, jinja2
-import time
-from itertools import chain
+
 
 @plugin
-def unique_file(prefix : "string", seed : "string", suffix : "string", length : "number" = 20) -> "string":
+def unique_file(prefix: "string", seed: "string", suffix: "string", length: "number"=20) -> "string":
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
+
 
 class TemplateResult(str):
     pass
+
 
 class TemplateStatement(CallStatement):
     """
         Evaluates a template
     """
-    def __init__(self, env, template_file = None, template_content = None):
+    def __init__(self, env, template_file=None, template_content=None):
         CallStatement.__init__(self)
         self._template = template_file
         self._content = template_content
@@ -121,24 +128,16 @@ class TemplateStatement(CallStatement):
             return result
         except UnknownException as e:
             return e.unknown
-        
+
         except TypeError as e:
             if e.args[0].startswith("'Unknown'"):
                 return Unknown(source=None)
-            
+
             raise e
 
     def __repr__(self):
         return "Template(%s)" % self._template
 
-__TEMPLATE_CTX = None
-
-def reset():
-    """
-        Reset templating
-    """
-    jinja2.clear_caches()
-    __TEMPLATE_CTX = None
 
 def _get_template_engine(ctx):
     """
@@ -151,7 +150,7 @@ def _get_template_engine(ctx):
             loader_map[module] = FileSystemLoader(template_dir)
 
     # init the environment
-    env = Environment(loader = PrefixLoader(loader_map))
+    env = Environment(loader=PrefixLoader(loader_map))
 
     # register all plugins as filters
     for name, cls in PluginMeta.get_functions().items():
@@ -161,14 +160,14 @@ def _get_template_engine(ctx):
 
 
 @plugin
-def template(ctx : Context, path : "string"):
+def template(ctx: Context, path: "string"):
     """
         Execute the template in path in the current context. This function will
         generate a new statement that has dependencies on the used variables.
     """
     jinja_env = _get_template_engine(ctx)
 
-    stmt = TemplateStatement(jinja_env, template_file = path)
+    stmt = TemplateStatement(jinja_env, template_file=path)
     stmt.namespace = ["std"]
 
     ctx.emit_statement(stmt)
@@ -186,11 +185,10 @@ def dir_before_file(model, resources):
             model = resource.model
             host = model.host
 
-
             for dir in host.directories:
                 dir_res = Resource.get_resource(dir)
                 if dir_res is not None and os.path.dirname(resource.path) == dir_res.path:
-                    #Make the File resource require the directory
+                    # Make the File resource require the directory
                     resource.requires.add(dir_res.id)
 
 
@@ -205,25 +203,27 @@ def get_passwords(pw_file):
                     i = line.index("=")
 
                     try:
-                        records[line[:i].strip()] = line[i+1:].strip()
+                        records[line[:i].strip()] = line[i + 1:].strip()
                     except ValueError:
                         pass
 
     return records
 
+
 def save_passwords(pw_file, records):
     with open(pw_file, "w+") as fd:
-        for key,value in records.items():
+        for key, value in records.items():
             fd.write("%s=%s\n" % (key, value))
 
+
 @plugin
-def generate_password(context : Context, pw_id : "string", length : "number" = 20) -> "string":
+def generate_password(context: Context, pw_id: "string", length: "number"=20) -> "string":
     """
     Generate a new random password and store it in the data directory of the
     project. On next invocations the stored password will be used.
 
-    :param pw_id string The id of the password to identify it.
-    :param length number The length of the password, default length is 20
+    :param pw_id: The id of the password to identify it.
+    :param length: The length of the password, default length is 20
     """
     data_dir = context.get_data_dir()
     pw_file = os.path.join(data_dir, "passwordfile.txt")
@@ -251,11 +251,11 @@ def generate_password(context : Context, pw_id : "string", length : "number" = 2
 
 
 @plugin
-def password(context : Context, pw_id : "string") -> "string":
+def password(context: Context, pw_id: "string") -> "string":
     """
         Retrieve the given password from a password file. It raises an exception when a password is not found
 
-        :param pw_id string The id of the password to identify it.
+        :param pw_id: The id of the password to identify it.
     """
     data_dir = context.get_data_dir()
     pw_file = os.path.join(data_dir, "passwordfile.txt")
@@ -271,15 +271,17 @@ def password(context : Context, pw_id : "string") -> "string":
     else:
         raise Exception("Password %s does not exist in file %s" % (pw_id, pw_file))
 
+
 @plugin("print")
-def printf(message : "any"):
+def printf(message: "any"):
     """
         Print the given message to stdout
     """
     print(message)
 
+
 @plugin
-def equals(arg1 : "any", arg2 : "any", desc : "string" = None):
+def equals(arg1: "any", arg2: "any", desc: "string"=None):
     """
         Compare arg1 and arg2
     """
@@ -291,7 +293,7 @@ def equals(arg1 : "any", arg2 : "any", desc : "string" = None):
 
 
 @plugin("assert")
-def assert_function(expression : "bool", message : "string" = ""):
+def assert_function(expression: "bool", message: "string"=""):
     """
         Raise assertion error is expression is false
     """
@@ -300,14 +302,15 @@ def assert_function(expression : "bool", message : "string" = ""):
 
 
 @plugin
-def delay(x : "any") -> "any":
+def delay(x: "any") -> "any":
     """
         Delay evaluation
     """
     return x
 
+
 @plugin
-def get(ctx : Context, path : "string") -> "any":
+def get(ctx: Context, path: "string") -> "any":
     """
         This function return the variable with given string path
     """
@@ -319,8 +322,9 @@ def get(ctx : Context, path : "string") -> "any":
     var = ctx.scope.get_variable(cls_name, module)
     return var.value
 
+
 @plugin
-def select(objects : "list", attr : "string") -> "list":
+def select(objects: "list", attr: "string") -> "list":
     """
         Return a list with the select attributes
     """
@@ -330,8 +334,9 @@ def select(objects : "list", attr : "string") -> "list":
 
     return r
 
+
 @plugin
-def item(objects : "list", index : "number") -> "list":
+def item(objects: "list", index: "number") -> "list":
     """
         Return a list that selects the item at index from each of the sublists
     """
@@ -341,17 +346,20 @@ def item(objects : "list", index : "number") -> "list":
 
     return r
 
+
 @plugin
-def key_sort(items : "list", key : "any") -> "list":
+def key_sort(items: "list", key: "any") -> "list":
     """
         Sort an array of object on key
     """
     if isinstance(key, tuple):
-        return sorted(items, key = attrgetter(*key))
-    return sorted(items, key = attrgetter(key))
+        return sorted(items, key=attrgetter(*key))
+
+    return sorted(items, key=attrgetter(key))
+
 
 @plugin
-def timestamp(dummy : "any" = None) -> "number":
+def timestamp(dummy: "any"=None) -> "number":
     """
         Return an integer with the current unix timestamp
 
@@ -359,27 +367,31 @@ def timestamp(dummy : "any" = None) -> "number":
     """
     return int(time.time())
 
+
 @plugin
-def capitalize(string : "string") -> "string":
+def capitalize(string: "string") -> "string":
     """
         Capitalize the given string
     """
     return string.capitalize()
 
+
 @plugin
-def type(obj : "any") -> "any":
+def type(obj: "any") -> "any":
     value = obj.value
     return value.type().__definition__
 
+
 @plugin
-def sequence(i : "number") -> "list":
+def sequence(i: "number") -> "list":
     """
         Return a sequence of i numbers, starting from zero
     """
     return list(range(0, int(i)))
 
+
 @plugin
-def inlineif(conditional : "bool", a : "any", b : "any") -> "any":
+def inlineif(conditional: "bool", a: "any", b: "any") -> "any":
     """
         An inline if
     """
@@ -387,52 +399,43 @@ def inlineif(conditional : "bool", a : "any", b : "any") -> "any":
         return a
     return b
 
+
 @plugin
-def at(objects : "list", index : "number") -> "any":
+def at(objects: "list", index: "number") -> "any":
     """
         Get the item at index
     """
     return objects[int(index)]
 
+
 @plugin
-def attr(obj : "any", attr : "string") -> "any":
+def attr(obj: "any", attr: "string") -> "any":
     return getattr(obj, attr)
 
-@plugin
-def cm(parameter_value : "any", parameter_name : "string",
-       index : "number" = -1, param_type : "string" = None) -> "any":
-    """
-        Use this filter in templates to count the occurence of a parameter
-    """
-    from impera.stats import TemplateStats
-
-    if param_type is None:
-        TemplateStats.instance.record_access(parameter_name, parameter_value, -1, index)
-    else:
-        TemplateStats.instance.record_access(parameter_name, parameter_value, index, param_type)
-
-    return parameter_value
 
 @plugin
-def isset(value : "any") -> "bool":
+def isset(value: "any") -> "bool":
     """
         Returns true if a value has been set
     """
     return value is not None
 
+
 @plugin
-def bootstrap(context : Context) -> "bool":
+def bootstrap(context: Context) -> "bool":
     if "bootstrap" not in context.compiler.config["config"]:
         return False
     value = context.compiler.config["config"].getboolean("bootstrap")
     return value
 
-@plugin
-def objid(value : "any") -> "string":
-    return str((value._get_instance(), str(id(value._get_instance())), value._get_instance().__class__))
 
 @plugin
-def first_of(context : Context, value : "list", type_name : "string") -> "any":
+def objid(value: "any") -> "string":
+    return str((value._get_instance(), str(id(value._get_instance())), value._get_instance().__class__))
+
+
+@plugin
+def first_of(context: Context, value: "list", type_name: "string") -> "any":
     """
         Return the first in the list that has the given type
     """
@@ -445,8 +448,9 @@ def first_of(context : Context, value : "list", type_name : "string") -> "any":
 
     return None
 
+
 @plugin
-def any(item_list : "list", expression : "expression") -> "bool":
+def any(item_list: "list", expression: "expression") -> "bool":
     """
         This method returns true when at least on item evaluates expression
         to true, otherwise it returns false
@@ -459,8 +463,9 @@ def any(item_list : "list", expression : "expression") -> "bool":
             return True
     return False
 
+
 @plugin
-def all(item_list : "list", expression : "expression") -> "bool":
+def all(item_list: "list", expression: "expression") -> "bool":
     """
         This method returns false when at least one item does not evaluate
         expression to true, otherwise it returns true
@@ -473,15 +478,17 @@ def all(item_list : "list", expression : "expression") -> "bool":
             return False
     return True
 
+
 @plugin
-def count(item_list : "list") -> "number":
+def count(item_list: "list") -> "number":
     """
         Returns the number of elements in this list
     """
     return len(item_list)
 
+
 @plugin
-def each(item_list : "list", expression : "expression") -> "list":
+def each(item_list: "list", expression: "expression") -> "list":
     """
         Iterate over this list executing the expression for each item.
 
@@ -497,8 +504,9 @@ def each(item_list : "list", expression : "expression") -> "list":
 
     return new_list
 
+
 @plugin
-def order_by(item_list : "list", expression : "expression" = None, comparator : "epxression" = None) -> "list":
+def order_by(item_list: "list", expression: "expression"=None, comparator: "epxression"=None) -> "list":
     """
         This operation orders a list using the object returned by
         expression and optionally using the comparator function to determine
@@ -511,6 +519,7 @@ def order_by(item_list : "list", expression : "expression" = None, comparator : 
         @param comparator: An optional expression that compares two items.
     """
     expression_cache = {}
+
     def get_from_cache(item):
         """
             Function that is used to retrieve cache results
@@ -536,13 +545,18 @@ def order_by(item_list : "list", expression : "expression" = None, comparator : 
         if comparator is not None:
             return comparator(a_data, b_data)
         else:
-            return cmp(a_data, b_data)
+            if a_data > b_data:
+                return 1
+            elif b_data > a_data:
+                return -1
+            return 0
 
     # sort
     return sorted(item_list, sort_cmp)
 
+
 @plugin
-def unique(item_list : "list") -> "bool":
+def unique(item_list: "list") -> "bool":
     """
         Returns true if all items in this sequence are unique
     """
@@ -554,8 +568,9 @@ def unique(item_list : "list") -> "bool":
 
     return True
 
+
 @plugin
-def select_attr(item_list : "list", attr : "string") -> "list":
+def select_attr(item_list: "list", attr: "string") -> "list":
     """
         This query method projects the list onto a new list by transforming
         the list as defined in the expression.
@@ -574,9 +589,10 @@ def select_attr(item_list : "list", attr : "string") -> "list":
 
     return new_list
 
+
 @plugin
-def select_many(item_list : "list", expression : "expression",
-                selector_expression : "expression" = None) -> "list":
+def select_many(item_list: "list", expression: "expression",
+                selector_expression: "expression"=None) -> "list":
     """
         This query method is similar to the select query but it merges
         the results into one list.
@@ -608,8 +624,9 @@ def select_many(item_list : "list", expression : "expression",
 
     return new_list
 
+
 @plugin
-def where(item_list : "list", expression : "expression") -> "list":
+def where(item_list: "list", expression: "expression") -> "list":
     """
         This query method selects the items in the list that evaluate the
         expression to true.
@@ -629,8 +646,9 @@ def where(item_list : "list", expression : "expression") -> "list":
 
     return new_list
 
+
 @plugin
-def where_compare(item_list : "list", expr_list : "list") -> "list":
+def where_compare(item_list: "list", expr_list: "list") -> "list":
     """
         This query selects items in a list but uses the tupples in expr_list
         to select the items.
@@ -655,11 +673,12 @@ def where_compare(item_list : "list", expr_list : "list") -> "list":
 
 
 @plugin
-def flatten(item_list : "list") -> "list":
+def flatten(item_list: "list") -> "list":
     """
         Flatten this list
     """
     return list(chain.from_iterable(item_list))
+
 
 @plugin
 def split(string_list: "string", delim: "string") -> "list":
@@ -670,6 +689,7 @@ def split(string_list: "string", delim: "string") -> "list":
         :param delim: The delimeter to split the text by
     """
     return string_list.split(delim)
+
 
 def determine_path(ctx, module_dir, path):
     """
@@ -685,8 +705,8 @@ def determine_path(ctx, module_dir, path):
 
     module_path = modules[parts[0]]._path
 
-    return os.path.join(module_path, module_dir,
-                        os.path.sep.join(parts[1:]))
+    return os.path.join(module_path, module_dir, os.path.sep.join(parts[1:]))
+
 
 def get_file_content(ctx, module_dir, path):
     """
@@ -694,14 +714,14 @@ def get_file_content(ctx, module_dir, path):
     """
     filename = determine_path(ctx, module_dir, path)
 
-    if filename == None:
+    if filename is None:
         raise Exception("%s does not exist" % path)
 
     if not os.path.isfile(filename):
         raise Exception("%s isn't a valid file" % path)
 
     file_fd = open(filename, 'r')
-    if file_fd == None:
+    if file_fd is None:
         raise Exception("Unable to open file %s" % filename)
 
     content = file_fd.read()
@@ -709,21 +729,23 @@ def get_file_content(ctx, module_dir, path):
 
     return content
 
+
 @plugin
-def source(ctx : Context, path : "string") -> "string":
+def source(ctx: Context, path: "string") -> "string":
     """
         Return the textual contents of the given file
     """
     return get_file_content(ctx, 'files', path)
 
+
 @plugin
-def file(ctx : Context, path : "string") -> "string":
+def file(ctx: Context, path: "string") -> "string":
     """
         Return the textual contents of the given file
     """
     filename = determine_path(ctx, 'files', path)
     any
-    if filename == None:
+    if filename is None:
         raise Exception("%s does not exist" % path)
 
     if not os.path.isfile(filename):
@@ -731,8 +753,9 @@ def file(ctx : Context, path : "string") -> "string":
 
     return "imp-module-source:file://" + os.path.abspath(filename)
 
+
 @plugin
-def familyof(member : "std::OS", family : "string") -> "bool":
+def familyof(member: "std::OS", family: "string") -> "bool":
     """
         Determine if member is a member of the given operating system family
     """
@@ -748,10 +771,10 @@ def familyof(member : "std::OS", family : "string") -> "bool":
 
     return False
 
+
 @plugin
-def getfact(resource : "any", fact_name : "string", default_value : "any" = None):
+def getfact(resource: "any", fact_name: "string", default_value: "any"=None):
     """
         Retrieve a fact of the given resource
     """
     return get_fact(resource, fact_name, default_value)
-
