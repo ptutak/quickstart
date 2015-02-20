@@ -1,5 +1,5 @@
 author: Bart Vanbrabant <bart@impera.io>
 license: Apache 2.0
 name: std
-source: git@github.com:impera-io/std
-version: 0.4.7
+source: git@git.impera.io:modules/std
+version: 0.4.8
