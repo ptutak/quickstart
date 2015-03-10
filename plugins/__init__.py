@@ -25,9 +25,10 @@ from operator import attrgetter
 from itertools import chain
 
 from impera.ast.statements import CallStatement
-from impera.ast.variables import Reference
+from impera.ast.variables import Reference, LazyVariable
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
+from impera.execute import NotFoundException
 from impera.export import dependency_manager
 from impera.plugins.base import plugin, Context, PluginMeta
 from impera.resources import Resource
@@ -41,10 +42,6 @@ from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 @plugin
 def unique_file(prefix: "string", seed: "string", suffix: "string", length: "number"=20) -> "string":
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
-
-
-class TemplateResult(str):
-    pass
 
 
 class TemplateStatement(CallStatement):
@@ -100,40 +97,38 @@ class TemplateStatement(CallStatement):
 
         return actions
 
-    def evaluate(self, state, _local_scope):
+    def evaluate(self, state, local_scope):
         """
             Execute this function
         """
-        TemplateStats.instance = TemplateStats(self._template)
-
         if self.is_file():
             template = self._env.get_template(self._template)
         else:
             template = Template(self._content)
 
+        variables = {}
+        for var in self._get_variables():
+            name = str(var)
+            variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
+            
+        def lazy():
+            try:
+                return template.render(variables)
+            except UnknownException as e:
+                return e.unknown
+    
+            except TypeError as e:
+                if e.args[0].startswith("'Unknown'"):
+                    return Unknown(source=None)
+    
+                raise e
+
         try:
-            variables = {}
-            for var in self._get_variables():
-                name = str(var)
-                variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
+            var = local_scope.get_variable("string", ["__types__"])
+        except NotFoundException:
+            raise NotFoundException("Unable to find type %s" % arg_type)
 
-            value = template.render(variables)
-            result = TemplateResult(value)
-
-            if TemplateStats.instance is not None:
-                result.stats = TemplateStats.instance.get_stats()
-                result.template = self._template
-                TemplateStats.instance = None
-
-            return result
-        except UnknownException as e:
-            return e.unknown
-
-        except TypeError as e:
-            if e.args[0].startswith("'Unknown'"):
-                return Unknown(source=None)
-
-            raise e
+        return LazyVariable(lazy, var.value)
 
     def __repr__(self):
         return "Template(%s)" % self._template
@@ -159,7 +154,7 @@ def _get_template_engine(ctx):
     return env
 
 
-@plugin
+@plugin("template", emits_statements=True)
 def template(ctx: Context, path: "string"):
     """
         Execute the template in path in the current context. This function will
