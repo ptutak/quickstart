@@ -110,17 +110,17 @@ class TemplateStatement(CallStatement):
         for var in self._get_variables():
             name = str(var)
             variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
-            
+
         def lazy():
             try:
                 return template.render(variables)
             except UnknownException as e:
                 return e.unknown
-    
+
             except TypeError as e:
                 if e.args[0].startswith("'Unknown'"):
                     return Unknown(source=None)
-    
+
                 raise e
 
         try:
@@ -768,7 +768,7 @@ def familyof(member: "std::OS", family: "string") -> "bool":
 
 
 @plugin
-def getfact(resource: "any", fact_name: "string", default_value: "any"=None):
+def getfact(resource: "any", fact_name: "string", default_value: "any"=None) -> "any":
     """
         Retrieve a fact of the given resource
     """
