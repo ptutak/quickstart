@@ -378,11 +378,11 @@ def type(obj: "any") -> "any":
 
 
 @plugin
-def sequence(i: "number") -> "list":
+def sequence(i: "number", start: "number"=0) -> "list":
     """
-        Return a sequence of i numbers, starting from zero
+        Return a sequence of i numbers, starting from zero or start if supplied.
     """
-    return list(range(1, int(i)))
+    return list(range(start, int(i)))
 
 
 @plugin
