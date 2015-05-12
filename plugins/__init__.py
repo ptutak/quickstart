@@ -382,7 +382,7 @@ def sequence(i: "number") -> "list":
     """
         Return a sequence of i numbers, starting from zero
     """
-    return list(range(0, int(i)))
+    return list(range(1, int(i)))
 
 
 @plugin
