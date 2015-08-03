@@ -112,7 +112,10 @@ class PosixFileProvider(ResourceHandler):
 
             # upload the previous version for back up and for generating a diff!
             content = self._io.read_binary(resource.path).decode('utf-8')
-            self._agent._client.call(methods.FileMethod, operation="PUT", id=current.hash, content=content)
+
+            res = self._agent._client.stat_file(id=current.hash)
+            if res.code == 404:
+                res = self._agent._client.upload_file(id=current.hash, content=content)
 
             for key, value in self._io.file_stat(resource.path).items():
                 setattr(current, key, value)
