@@ -384,7 +384,7 @@ class YumPackage(ResourceHandler):
 
         state = "removed"
 
-        if output["Repo"] == "installed":
+        if output["Repo"] == "installed" or output["Repo"] == "@System":
             state = "installed"
 
         # check if there is an update
