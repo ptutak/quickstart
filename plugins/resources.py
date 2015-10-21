@@ -178,7 +178,7 @@ class PosixFileProvider(ResourceHandler):
             self._io.chown(resource.path, resource.owner, resource.group)
             changed = True
 
-        return changed
+        return changes
 
 
 @provider("std::Service", name="systemd")
