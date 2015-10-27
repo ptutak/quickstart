@@ -107,9 +107,12 @@ class TemplateStatement(CallStatement):
             template = Template(self._content)
 
         variables = {}
-        for var in self._get_variables():
-            name = str(var)
-            variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
+        try:
+            for var in self._get_variables():
+                name = str(var)
+                variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
+        except UnknownException as e:
+            return e.unknown
 
         def lazy():
             try:
