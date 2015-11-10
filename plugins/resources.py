@@ -342,7 +342,7 @@ class YumPackage(ResourceHandler):
     """
     def available(self, resource):
         return (self._io.file_exists("/usr/bin/rpm") or self._io.file_exists("/bin/rpm")) \
-            and self._io.file_exists("/usr/bin/yum")
+            and (self._io.file_exists("/usr/bin/yum") or self._io.file_exists("/usr/bin/dnf"))
 
     def _parse_fields(self, lines):
         props = {}
@@ -371,7 +371,11 @@ class YumPackage(ResourceHandler):
         return props
 
     def _run_yum(self, args):
-        return self._io.run("/usr/bin/yum", ["-d", "0", "-e", "0", "-y"] + args)
+        #todo: cache value
+        if self._io.file_exists("/usr/bin/dnf"):
+            return self._io.run("/usr/bin/dnf", ["-d", "0", "-e", "0", "-y"] + args)
+        else:
+            return self._io.run("/usr/bin/yum", ["-d", "0", "-e", "0", "-y"] + args)
 
     def check_resource(self, resource):
         yum_output = self._run_yum(["info", resource.name])
@@ -422,9 +426,10 @@ class YumPackage(ResourceHandler):
         return changes
 
     def _result(self, output):
+        stdout = output[0].strip()
         error_msg = output[1].strip()
-        if "Error:" in error_msg:
-            raise Exception("Yum failed: " + error_msg)
+        if output[2] != 0:
+            raise Exception("Yum failed: stdout:"+stdout +" errout: " + error_msg)
 
     def do_changes(self, resource):
         changes = self.list_changes(resource)
