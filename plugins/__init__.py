@@ -21,6 +21,7 @@ import os
 import random
 import re
 import time
+import uuid
 from operator import attrgetter
 from itertools import chain
 
@@ -35,6 +36,9 @@ from impera.resources import Resource
 from impera.stats import TemplateStats
 from impera.module import Project
 from impera.facts import get_fact
+from impera import protocol
+from impera.config import Config
+
 
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 
@@ -776,3 +780,42 @@ def getfact(resource: "any", fact_name: "string", default_value: "any"=None) -> 
         Retrieve a fact of the given resource
     """
     return get_fact(resource, fact_name, default_value)
+
+
+@plugin
+def environment() -> "string":
+    """
+        Return the environment id
+    """
+    env = Config.get("config", "environment", None)
+
+    if env is None:
+        raise Exception("The environment of this model should be configured in config>environment")
+
+    try:
+        uuid.UUID(env)
+    except ValueError:
+        raise Exception("The environment id should be a valid UUID.")
+
+    return env
+
+
+@plugin
+def environment_name() -> "string":
+    """
+        Return the name of the environment (as defined on the server)
+    """
+    env_id = environment()
+    client = protocol.Client("compiler", "client")
+    result = client.get_environment(id=env_id)    
+    return result.result["environment"]["name"]
+
+
+@plugin
+def environment_server() -> "string":
+    """
+        Return the address of the management server
+    """
+    client = protocol.Client("compiler", "client")
+    return client._transport_instance._get_client_config()[0]
+
