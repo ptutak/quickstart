@@ -20,6 +20,7 @@ import logging
 import re
 import urllib
 import os
+import base64
 
 from impera.agent.handler import provider, ResourceHandler
 from impera.execute.util import Unknown
@@ -111,11 +112,11 @@ class PosixFileProvider(ResourceHandler):
             current.hash = self._io.hash_file(resource.path)
 
             # upload the previous version for back up and for generating a diff!
-            content = self._io.read_binary(resource.path).decode('utf-8')
+            content = self._io.read_binary(resource.path)
 
             res = self._agent._client.stat_file(id=current.hash)
             if res.code == 404:
-                res = self._agent._client.upload_file(id=current.hash, content=content)
+                res = self._agent._client.upload_file(id=current.hash, content=base64.b64encode(content).decode("ascii"))
 
             for key, value in self._io.file_stat(resource.path).items():
                 setattr(current, key, value)
@@ -179,7 +180,11 @@ class PosixFileProvider(ResourceHandler):
             changed = True
 
         return changes
-
+    
+    def snapshot(self, resource):
+        # upload the previous version for back up and for generating a diff!
+        content = self._io.read_binary(resource.path)
+        return content
 
 @provider("std::Service", name="systemd")
 class SystemdService(ResourceHandler):

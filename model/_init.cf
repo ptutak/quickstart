@@ -186,3 +186,16 @@ implementation hostDefaults for std::Host:
     HostConfig(host = self)
 end
 
+entity State:
+    """
+        Baseclass for entities that contain state
+
+        :param allow_snapshot Allow a snapshot of the state contained in this entity
+        :param allow_restore Allow a restore of the state containted in this entity
+        :param state_id The id to identify the state. If left empty, the resource id is used.
+                        (This can be used for cross environment/model restores)
+    """
+    bool allow_snapshot = true
+    bool allow_restore = true
+    string state_id = ""
+end
