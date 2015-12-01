@@ -182,9 +182,8 @@ class PosixFileProvider(ResourceHandler):
         return changes
     
     def snapshot(self, resource):
-        # upload the previous version for back up and for generating a diff!
-        content = self._io.read_binary(resource.path)
-        return content
+        return self._io.read_binary(resource.path)
+
 
 @provider("std::Service", name="systemd")
 class SystemdService(ResourceHandler):
