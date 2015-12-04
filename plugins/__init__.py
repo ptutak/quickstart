@@ -385,11 +385,11 @@ def type(obj: "any") -> "any":
 
 
 @plugin
-def sequence(i: "number", start: "number"=0) -> "list":
+def sequence(i: "number", start: "number"=0, offset: "number"=0) -> "list":
     """
         Return a sequence of i numbers, starting from zero or start if supplied.
     """
-    return list(range(start, int(i) + start))
+    return list(range(start, int(i) + start - offset))
 
 
 @plugin
@@ -818,4 +818,14 @@ def environment_server() -> "string":
     """
     client = protocol.Client("compiler", "client")
     return client._transport_instance._get_client_config()[0]
+
+
+@plugin
+def is_set(obj: "any", attribute: "string") -> "bool":
+    try:
+        getattr(obj, attribute)
+    except:
+        return False
+    return True
+
 
