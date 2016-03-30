@@ -1,5 +1,5 @@
-author: Bart Vanbrabant <bart@impera.io>
+author: Bart Vanbrabant <bart@inmanta.com>
 license: Apache 2.0
 name: std
-source: git@git.impera.io:modules/std
-version: 0.4.14
+source: git@git.inmanta.com:modules/std
+version: 0.5
