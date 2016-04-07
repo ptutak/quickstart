@@ -25,7 +25,7 @@ import uuid
 from operator import attrgetter
 from itertools import chain
 
-from impera.ast.statements import CallStatement, ExpressionStatement
+from impera.ast.statements import ExpressionStatement
 from impera.ast.variables import Reference, LazyVariable
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
