@@ -78,6 +78,7 @@ entity Service:
     string          name
     service_state   state
     bool            onboot
+    bool            reload = false
 end
 
 implement Service using std::none

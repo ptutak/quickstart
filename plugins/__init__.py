@@ -25,7 +25,7 @@ import uuid
 from operator import attrgetter
 from itertools import chain
 
-from impera.ast.statements import CallStatement
+from impera.ast.statements import CallStatement, ExpressionStatement
 from impera.ast.variables import Reference, LazyVariable
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
@@ -48,15 +48,25 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
 
 
-class TemplateStatement(CallStatement):
+class TemplateStatement(ExpressionStatement):
     """
         Evaluates a template
     """
     def __init__(self, env, template_file=None, template_content=None):
-        CallStatement.__init__(self)
+        ExpressionStatement.__init__(self)
         self._template = template_file
         self._content = template_content
         self._env = env
+        self._requires = self._get_variables()
+
+    def normalize(self, resolver):
+        pass
+
+    def requires(self):
+        return  self._requires
+    
+    def requires_emit(self, resolver, queue):
+        return {k:resolver.lookup(k) for k in self._requires}
 
     def is_file(self):
         """
@@ -77,31 +87,7 @@ class TemplateStatement(CallStatement):
         variables = meta.find_undeclared_variables(ast)
         return variables
 
-    def references(self):
-        """
-            @see DynamicStatement#references
-        """
-        refs = []
-
-        for var in self._get_variables():
-            refs.append((str(var), Reference(str(var))))
-
-        return refs
-
-    def actions(self, state):
-        """
-            A template uses all variables that are not resolved inside the
-            template
-        """
-        result = state.get_result_reference()
-        actions = [("set", result)]
-
-        for var in self._get_variables():
-            actions.append(("get", state.get_ref(str(var))))
-
-        return actions
-
-    def evaluate(self, state, local_scope):
+    def execute(self, requires, resolver, queue):
         """
             Execute this function
         """
@@ -112,30 +98,13 @@ class TemplateStatement(CallStatement):
 
         variables = {}
         try:
-            for var in self._get_variables():
-                name = str(var)
-                variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
+            for name in self._requires:
+                variables[name] = DynamicProxy.return_value(requires[name])
         except UnknownException as e:
             return e.unknown
 
-        def lazy():
-            try:
-                return template.render(variables)
-            except UnknownException as e:
-                return e.unknown
-
-            except TypeError as e:
-                if e.args[0].startswith("'Unknown'"):
-                    return Unknown(source=None)
-
-                raise e
-
-        try:
-            var = local_scope.get_variable("string", ["__types__"])
-        except NotFoundException:
-            raise NotFoundException("Unable to find type %s" % arg_type)
-
-        return LazyVariable(lazy, var.value)
+       
+        return template.render(variables)
 
     def __repr__(self):
         return "Template(%s)" % self._template
@@ -155,8 +124,8 @@ def _get_template_engine(ctx):
     env = Environment(loader=PrefixLoader(loader_map))
 
     # register all plugins as filters
-    for name, cls in PluginMeta.get_functions().items():
-        env.filters[name.replace("::", ".")] = cls(ctx.compiler, ctx.graph, ctx.scope)
+    for name, cls in ctx.get_compiler().get_plugins().items():
+        env.filters[name.replace("::", ".")] = cls
 
     return env
 
@@ -172,7 +141,7 @@ def template(ctx: Context, path: "string"):
     stmt = TemplateStatement(jinja_env, template_file=path)
     stmt.namespace = ["std"]
 
-    ctx.emit_statement(stmt)
+    ctx.emit_expression(stmt)
 
 
 @dependency_manager
@@ -508,7 +477,7 @@ def each(item_list: "list", expression: "expression") -> "list":
 
 
 @plugin
-def order_by(item_list: "list", expression: "expression"=None, comparator: "epxression"=None) -> "list":
+def order_by(item_list: "list", expression: "expression"=None, comparator: "expression"=None) -> "list":
     """
         This operation orders a list using the object returned by
         expression and optionally using the comparator function to determine
