@@ -48,6 +48,9 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
 
 
+vcache = {}
+tcache = {}
+
 class TemplateStatement(ExpressionStatement):
     """
         Evaluates a template
@@ -78,23 +81,34 @@ class TemplateStatement(ExpressionStatement):
         """
             Get all variables that are unsresolved
         """
+        if self._template in vcache:
+            return vcache[self._template]
+         
         if self.is_file():
             source = self._env.loader.get_source(self._env, self._template)[0]
         else:
             source = self._content
 
+        #Parse here, later again,....
         ast = self._env.parse(source)
         variables = meta.find_undeclared_variables(ast)
+        
+        vcache[self._template] = variables
+        
         return variables
 
     def execute(self, requires, resolver, queue):
         """
             Execute this function
         """
-        if self.is_file():
+        if self._template in tcache:
+            template = tcache[self._template]
+        elif self.is_file():
             template = self._env.get_template(self._template)
+            tcache[self._template] = template
         else:
             template = Template(self._content)
+            tcache[self._template] = template
 
         variables = {}
         try:
