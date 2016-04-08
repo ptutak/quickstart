@@ -151,8 +151,8 @@ def dir_before_file(model, resources):
     """
     # loop over all resources to find files
     for _id, resource in resources.items():
-        res_class = resource.model.__class__
-        if resource.model.__module__ == "std" and res_class.__name__ == "File":
+        
+        if resource.is_type("std::File"):
             model = resource.model
             host = model.host
 
@@ -160,7 +160,7 @@ def dir_before_file(model, resources):
                 dir_res = Resource.get_resource(dir)
                 if dir_res is not None and os.path.dirname(resource.path) == dir_res.path:
                     # Make the File resource require the directory
-                    resource.requires.add(dir_res.id)
+                    resource.requires.add(dir_res)
 
 
 def get_passwords(pw_file):
