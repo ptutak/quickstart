@@ -26,7 +26,7 @@ from operator import attrgetter
 from itertools import chain
 
 from impera.ast.statements import ExpressionStatement
-from impera.ast.variables import Reference, LazyVariable
+from impera.ast.variables import Reference
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
 from impera.execute import NotFoundException
@@ -124,10 +124,16 @@ class TemplateStatement(ExpressionStatement):
         return "Template(%s)" % self._template
 
 
+engine_cache = None
+
 def _get_template_engine(ctx):
     """
         Initialize the template engine environment
     """
+    global engine_cache
+    if engine_cache is not None:
+        return engine_cache
+    
     loader_map = {}
     for module, path in ctx.compiler.loaded_modules.items():
         template_dir = os.path.join(path, "templates")
@@ -140,7 +146,8 @@ def _get_template_engine(ctx):
     # register all plugins as filters
     for name, cls in ctx.get_compiler().get_plugins().items():
         env.filters[name.replace("::", ".")] = cls
-
+    
+    engine_cache = env
     return env
 
 
