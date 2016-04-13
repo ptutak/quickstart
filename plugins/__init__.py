@@ -114,11 +114,10 @@ class TemplateStatement(ExpressionStatement):
         try:
             for name in self._requires:
                 variables[name] = DynamicProxy.return_value(requires[name])
+            return template.render(variables)
         except UnknownException as e:
             return e.unknown
-
        
-        return template.render(variables)
 
     def __repr__(self):
         return "Template(%s)" % self._template
