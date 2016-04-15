@@ -30,7 +30,7 @@ from impera.ast.variables import Reference
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
 from impera.export import dependency_manager
-from impera.plugins.base import plugin, Context, PluginMeta
+from impera.plugins import plugin, Context, PluginMeta
 from impera.resources import Resource
 from impera.stats import TemplateStats
 from impera.module import Project
@@ -66,7 +66,7 @@ class TemplateStatement(ExpressionStatement):
 
     def requires(self):
         return  self._requires
-    
+
     def requires_emit(self, resolver, queue):
         return {k:resolver.lookup(k) for k in self._requires}
 
@@ -82,7 +82,7 @@ class TemplateStatement(ExpressionStatement):
         """
         if self._template in vcache:
             return vcache[self._template]
-         
+
         if self.is_file():
             source = self._env.loader.get_source(self._env, self._template)[0]
         else:
@@ -91,9 +91,9 @@ class TemplateStatement(ExpressionStatement):
         #Parse here, later again,....
         ast = self._env.parse(source)
         variables = meta.find_undeclared_variables(ast)
-        
+
         vcache[self._template] = variables
-        
+
         return variables
 
     def execute(self, requires, resolver, queue):
@@ -116,7 +116,7 @@ class TemplateStatement(ExpressionStatement):
             return template.render(variables)
         except UnknownException as e:
             return e.unknown
-       
+
 
     def __repr__(self):
         return "Template(%s)" % self._template
@@ -131,7 +131,7 @@ def _get_template_engine(ctx):
     global engine_cache
     if engine_cache is not None:
         return engine_cache
-    
+
     loader_map = {}
     for module, path in ctx.compiler.loaded_modules.items():
         template_dir = os.path.join(path, "templates")
@@ -144,7 +144,7 @@ def _get_template_engine(ctx):
     # register all plugins as filters
     for name, cls in ctx.get_compiler().get_plugins().items():
         env.filters[name.replace("::", ".")] = cls
-    
+
     engine_cache = env
     return env
 
@@ -170,7 +170,7 @@ def dir_before_file(model, resources):
     """
     # loop over all resources to find files
     for _id, resource in resources.items():
-        
+
         if resource.is_type("std::File"):
             model = resource.model
             host = model.host
