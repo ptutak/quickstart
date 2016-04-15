@@ -25,11 +25,10 @@ import uuid
 from operator import attrgetter
 from itertools import chain
 
-from impera.ast.statements import CallStatement
-from impera.ast.variables import Reference, LazyVariable
+from impera.ast.statements import ExpressionStatement
+from impera.ast.variables import Reference
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
-from impera.execute import NotFoundException
 from impera.export import dependency_manager
 from impera.plugins.base import plugin, Context, PluginMeta
 from impera.resources import Resource
@@ -48,15 +47,28 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
 
 
-class TemplateStatement(CallStatement):
+vcache = {}
+tcache = {}
+
+class TemplateStatement(ExpressionStatement):
     """
         Evaluates a template
     """
     def __init__(self, env, template_file=None, template_content=None):
-        CallStatement.__init__(self)
+        ExpressionStatement.__init__(self)
         self._template = template_file
         self._content = template_content
         self._env = env
+        self._requires = self._get_variables()
+
+    def normalize(self, resolver):
+        pass
+
+    def requires(self):
+        return  self._requires
+    
+    def requires_emit(self, resolver, queue):
+        return {k:resolver.lookup(k) for k in self._requires}
 
     def is_file(self):
         """
@@ -68,83 +80,58 @@ class TemplateStatement(CallStatement):
         """
             Get all variables that are unsresolved
         """
+        if self._template in vcache:
+            return vcache[self._template]
+         
         if self.is_file():
             source = self._env.loader.get_source(self._env, self._template)[0]
         else:
             source = self._content
 
+        #Parse here, later again,....
         ast = self._env.parse(source)
         variables = meta.find_undeclared_variables(ast)
+        
+        vcache[self._template] = variables
+        
         return variables
 
-    def references(self):
-        """
-            @see DynamicStatement#references
-        """
-        refs = []
-
-        for var in self._get_variables():
-            refs.append((str(var), Reference(str(var))))
-
-        return refs
-
-    def actions(self, state):
-        """
-            A template uses all variables that are not resolved inside the
-            template
-        """
-        result = state.get_result_reference()
-        actions = [("set", result)]
-
-        for var in self._get_variables():
-            actions.append(("get", state.get_ref(str(var))))
-
-        return actions
-
-    def evaluate(self, state, local_scope):
+    def execute(self, requires, resolver, queue):
         """
             Execute this function
         """
-        if self.is_file():
+        if self._template in tcache:
+            template = tcache[self._template]
+        elif self.is_file():
             template = self._env.get_template(self._template)
+            tcache[self._template] = template
         else:
             template = Template(self._content)
+            tcache[self._template] = template
 
         variables = {}
         try:
-            for var in self._get_variables():
-                name = str(var)
-                variables[name] = DynamicProxy.return_value(state.get_ref(var).value)
+            for name in self._requires:
+                variables[name] = DynamicProxy.return_value(requires[name])
+            return template.render(variables)
         except UnknownException as e:
             return e.unknown
-
-        def lazy():
-            try:
-                return template.render(variables)
-            except UnknownException as e:
-                return e.unknown
-
-            except TypeError as e:
-                if e.args[0].startswith("'Unknown'"):
-                    return Unknown(source=None)
-
-                raise e
-
-        try:
-            var = local_scope.get_variable("string", ["__types__"])
-        except NotFoundException:
-            raise NotFoundException("Unable to find type %s" % arg_type)
-
-        return LazyVariable(lazy, var.value)
+       
 
     def __repr__(self):
         return "Template(%s)" % self._template
 
 
+engine_cache = None
+
 def _get_template_engine(ctx):
     """
         Initialize the template engine environment
     """
+    global engine_cache
+    if engine_cache is not None:
+        return engine_cache
+    
     loader_map = {}
     for module, path in ctx.compiler.loaded_modules.items():
         template_dir = os.path.join(path, "templates")
@@ -155,9 +142,10 @@ def _get_template_engine(ctx):
     env = Environment(loader=PrefixLoader(loader_map))
 
     # register all plugins as filters
-    for name, cls in PluginMeta.get_functions().items():
-        env.filters[name.replace("::", ".")] = cls(ctx.compiler, ctx.graph, ctx.scope)
-
+    for name, cls in ctx.get_compiler().get_plugins().items():
+        env.filters[name.replace("::", ".")] = cls
+    
+    engine_cache = env
     return env
 
 
@@ -172,7 +160,7 @@ def template(ctx: Context, path: "string"):
     stmt = TemplateStatement(jinja_env, template_file=path)
     stmt.namespace = ["std"]
 
-    ctx.emit_statement(stmt)
+    ctx.emit_expression(stmt)
 
 
 @dependency_manager
@@ -182,8 +170,8 @@ def dir_before_file(model, resources):
     """
     # loop over all resources to find files
     for _id, resource in resources.items():
-        res_class = resource.model.__class__
-        if resource.model.__module__ == "std" and res_class.__name__ == "File":
+        
+        if resource.is_type("std::File"):
             model = resource.model
             host = model.host
 
@@ -191,7 +179,7 @@ def dir_before_file(model, resources):
                 dir_res = Resource.get_resource(dir)
                 if dir_res is not None and os.path.dirname(resource.path) == dir_res.path:
                     # Make the File resource require the directory
-                    resource.requires.add(dir_res.id)
+                    resource.requires.add(dir_res)
 
 
 def get_passwords(pw_file):
@@ -508,7 +496,7 @@ def each(item_list: "list", expression: "expression") -> "list":
 
 
 @plugin
-def order_by(item_list: "list", expression: "expression"=None, comparator: "epxression"=None) -> "list":
+def order_by(item_list: "list", expression: "expression"=None, comparator: "expression"=None) -> "list":
     """
         This operation orders a list using the object returned by
         expression and optionally using the comparator function to determine
