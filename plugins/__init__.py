@@ -29,7 +29,6 @@ from impera.ast.statements import ExpressionStatement
 from impera.ast.variables import Reference
 from impera.execute.proxy import DynamicProxy, UnknownException
 from impera.execute.util import Unknown
-from impera.execute import NotFoundException
 from impera.export import dependency_manager
 from impera.plugins.base import plugin, Context, PluginMeta
 from impera.resources import Resource
