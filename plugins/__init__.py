@@ -32,7 +32,6 @@ from impera.execute.util import Unknown
 from impera.export import dependency_manager
 from impera.plugins import plugin, Context, PluginMeta
 from impera.resources import Resource
-from impera.stats import TemplateStats
 from impera.module import Project
 from impera.facts import get_fact
 from impera import protocol
