@@ -24,7 +24,6 @@ import base64
 
 from impera.agent.handler import provider, ResourceHandler
 from impera.execute.util import Unknown
-from impera.export import resource_to_id
 from impera.resources import Resource, resource, ResourceNotFoundExcpetion
 from impera import methods
 
@@ -114,9 +113,8 @@ class PosixFileProvider(ResourceHandler):
             # upload the previous version for back up and for generating a diff!
             content = self._io.read_binary(resource.path)
 
-            res = self._agent._client.stat_file(id=current.hash)
-            if res.code == 404:
-                res = self._agent._client.upload_file(id=current.hash, content=base64.b64encode(content).decode("ascii"))
+            if not self.stat_file(current.hash):
+                self.upload_file(current.hash, content)
 
             for key, value in self._io.file_stat(resource.path).items():
                 setattr(current, key, value)
@@ -140,12 +138,6 @@ class PosixFileProvider(ResourceHandler):
         changes = self._list_changes(desired)
         return changes
 
-    def _get_content(self, resource):
-        """
-            Retrieve the content of the file and write it to the file
-        """
-        return self._agent.get_file(resource.hash)
-
     def do_changes(self, resource):
         changes = self._list_changes(resource)
         changed = False
@@ -159,7 +151,7 @@ class PosixFileProvider(ResourceHandler):
             dir_name = os.path.dirname(resource.path)
 
             if self._io.file_exists(dir_name):
-                data = self._get_content(resource)
+                data = self.get_file(resource.hash)
                 self._io.put(resource.path, data)
                 changed = True
             else:
@@ -573,10 +565,3 @@ class SymlinkProvider(ResourceHandler):
 
         return changed
 
-
-@resource_to_id("vm::Host")
-def vm_to_id(resource):
-    """
-        Convert a resource to an id
-    """
-    return "vm::Host[%s,name=%s]" % (resource.iaas.name, resource.name)
