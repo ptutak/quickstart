@@ -788,22 +788,23 @@ def environment() -> "string":
 
 
 @plugin
-def environment_name() -> "string":
+def environment_name(ctx: Context) -> "string":
     """
         Return the name of the environment (as defined on the server)
     """
     env_id = environment()
-    client = protocol.Client("compiler", "client")
-    result = client.get_environment(id=env_id)
+    def call():
+        return ctx.get_client().get_environment(id=env_id)
+    result = ctx.run_sync(call)
     return result.result["environment"]["name"]
 
 
 @plugin
-def environment_server() -> "string":
+def environment_server(ctx: Context) -> "string":
     """
         Return the address of the management server
     """
-    client = protocol.Client("compiler", "client")
+    client = ctx.get_client()
     return client._transport_instance._get_client_config()[0]
 
 
