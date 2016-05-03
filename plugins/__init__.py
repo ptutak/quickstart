@@ -805,7 +805,7 @@ def environment_server(ctx: Context) -> "string":
         Return the address of the management server
     """
     client = ctx.get_client()
-    return client._transport_instance._get_client_config()[0]
+    return client._transport_instance._get_client_config()
 
 
 @plugin
