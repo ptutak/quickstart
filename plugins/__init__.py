@@ -39,6 +39,9 @@ from impera.config import Config
 
 
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
+from impera.ast import RuntimeException, NotFoundException
+from impera.execute.runtime import ExecutionContext
+import jinja2
 
 
 @plugin
@@ -46,82 +49,21 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
 
 
-vcache = {}
 tcache = {}
 
-class TemplateStatement(ExpressionStatement):
-    """
-        Evaluates a template
-    """
-    def __init__(self, env, template_file=None, template_content=None):
-        ExpressionStatement.__init__(self)
-        self._template = template_file
-        self._content = template_content
-        self._env = env
-        self._requires = self._get_variables()
-
-    def normalize(self, resolver):
-        pass
-
-    def requires(self):
-        return  self._requires
-
-    def requires_emit(self, resolver, queue):
-        return {k:resolver.lookup(k) for k in self._requires}
-
-    def is_file(self):
-        """
-            Use a file?
-        """
-        return self._template is not None and self._content is None
-
-    def _get_variables(self):
-        """
-            Get all variables that are unsresolved
-        """
-        if self._template in vcache:
-            return vcache[self._template]
-
-        if self.is_file():
-            source = self._env.loader.get_source(self._env, self._template)[0]
-        else:
-            source = self._content
-
-        #Parse here, later again,....
-        ast = self._env.parse(source)
-        variables = meta.find_undeclared_variables(ast)
-
-        vcache[self._template] = variables
-
-        return variables
-
-    def execute(self, requires, resolver, queue):
-        """
-            Execute this function
-        """
-        if self._template in tcache:
-            template = tcache[self._template]
-        elif self.is_file():
-            template = self._env.get_template(self._template)
-            tcache[self._template] = template
-        else:
-            template = Template(self._content)
-            tcache[self._template] = template
-
-        variables = {}
-        try:
-            for name in self._requires:
-                variables[name] = DynamicProxy.return_value(requires[name])
-            return template.render(variables)
-        except UnknownException as e:
-            return e.unknown
-
-
-    def __repr__(self):
-        return "Template(%s)" % self._template
-
-
 engine_cache = None
+
+
+class ResolverContext(jinja2.runtime.Context):
+
+    def resolve(self, key):
+        resolver = self.parent["{{resolver"]
+        try:
+            raw = resolver.lookup(key)
+            return DynamicProxy.return_value(raw.get_value())
+        except NotFoundException:
+            return self.environment.undefined(name=key)
+
 
 def _get_template_engine(ctx):
     """
@@ -139,6 +81,7 @@ def _get_template_engine(ctx):
 
     # init the environment
     env = Environment(loader=PrefixLoader(loader_map))
+    env.context_class = ResolverContext
 
     # register all plugins as filters
     for name, cls in ctx.get_compiler().get_plugins().items():
@@ -148,7 +91,7 @@ def _get_template_engine(ctx):
     return env
 
 
-@plugin("template", emits_statements=True)
+@plugin("template")
 def template(ctx: Context, path: "string"):
     """
         Execute the template in path in the current context. This function will
@@ -156,10 +99,15 @@ def template(ctx: Context, path: "string"):
     """
     jinja_env = _get_template_engine(ctx)
 
-    stmt = TemplateStatement(jinja_env, template_file=path)
-    stmt.namespace = ["std"]
+    if path in tcache:
+        template = tcache[path]
+    else:
+        template = jinja_env.get_template(path)
+        tcache[path] = template
 
-    ctx.emit_expression(stmt)
+    resolver = ctx.get_resolver()
+
+    return template.render({"{{resolver": resolver})
 
 
 @dependency_manager
@@ -793,6 +741,7 @@ def environment_name(ctx: Context) -> "string":
         Return the name of the environment (as defined on the server)
     """
     env_id = environment()
+
     def call():
         return ctx.get_client().get_environment(id=env_id)
     result = ctx.run_sync(call)
@@ -815,5 +764,3 @@ def is_set(obj: "any", attribute: "string") -> "bool":
     except:
         return False
     return True
-
-
