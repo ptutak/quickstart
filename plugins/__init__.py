@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-    Contact: bart@inmanta.com
+    Contact: code@inmanta.com
 """
 
 import hashlib
@@ -25,17 +25,17 @@ import uuid
 from operator import attrgetter
 from itertools import chain
 
-from impera.ast.statements import ExpressionStatement
-from impera.ast.variables import Reference
-from impera.execute.proxy import DynamicProxy, UnknownException
-from impera.execute.util import Unknown
-from impera.export import dependency_manager
-from impera.plugins import plugin, Context, PluginMeta
-from impera.resources import Resource
-from impera.module import Project
-from impera.facts import get_fact
-from impera import protocol
-from impera.config import Config
+from inmanta.ast.statements import ExpressionStatement
+from inmanta.ast.variables import Reference
+from inmanta.execute.proxy import DynamicProxy, UnknownException
+from inmanta.execute.util import Unknown
+from inmanta.export import dependency_manager
+from inmanta.plugins import plugin, Context, PluginMeta
+from inmanta.resources import Resource
+from inmanta.module import Project
+from inmanta.facts import get_fact
+from inmanta import protocol
+from inmanta.config import Config
 
 
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
@@ -805,7 +805,7 @@ def environment_server(ctx: Context) -> "string":
         Return the address of the management server
     """
     client = ctx.get_client()
-    return client._transport_instance._get_client_config()
+    return client._transport_instance._get_client_config()[0]
 
 
 @plugin

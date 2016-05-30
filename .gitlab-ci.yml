@@ -3,4 +3,4 @@ validate:
     tags:
         - docker
     script:
-        - impera -vvv modules validate
+        - inmanta -vvv modules validate

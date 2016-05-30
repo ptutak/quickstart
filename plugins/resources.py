@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-    Contact: bart@inmanta.com
+    Contact: code@inmanta.com
 """
 
 import logging
@@ -22,10 +22,10 @@ import urllib
 import os
 import base64
 
-from impera.agent.handler import provider, ResourceHandler
-from impera.execute.util import Unknown
-from impera.resources import Resource, resource, ResourceNotFoundExcpetion
-from impera import methods
+from inmanta.agent.handler import provider, ResourceHandler
+from inmanta.execute.util import Unknown
+from inmanta.resources import Resource, resource, ResourceNotFoundExcpetion
+from inmanta import methods
 
 
 LOGGER = logging.getLogger(__name__)

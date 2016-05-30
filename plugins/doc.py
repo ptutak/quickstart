@@ -13,17 +13,17 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-    Contact: wouter@inmanta.com
+    Contact: code@inmanta.com
 """
 
 import logging
 import re
 import os
 
-from impera.export import export
-from impera.ast.attribute import RelationAttribute
-from impera.ast.entity import Entity
-from impera.config import Config
+from inmanta.export import export
+from inmanta.ast.attribute import RelationAttribute
+from inmanta.ast.entity import Entity
+from inmanta.config import Config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class Emitter:
     def __init__(self, dir, file):
         self.dir = dir
         self.index = file
-        contents = """Impera Documentation
+        contents = """Inmanta Documentation
 ===============================
 
 Contents:
