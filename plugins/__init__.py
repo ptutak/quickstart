@@ -807,7 +807,11 @@ def environment_server(ctx: Context) -> "string":
         Return the address of the management server
     """
     client = ctx.get_client()
-    return client._transport_instance._get_client_config()[0]
+    server_url = client._transport_instance._get_client_config()
+    match = re.search("^http://([^:]+):", server_url)
+    if match is not None:
+        return match.group(1)
+    return Unknown(source=server_url)
 
 
 @plugin
