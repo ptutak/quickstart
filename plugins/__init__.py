@@ -796,6 +796,8 @@ def environment_name(ctx: Context) -> "string":
     def call():
         return ctx.get_client().get_environment(id=env_id)
     result = ctx.run_sync(call)
+    if result.code != 200:
+        return Unknown(source=env_id)
     return result.result["environment"]["name"]
 
 
