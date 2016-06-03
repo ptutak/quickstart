@@ -132,10 +132,10 @@ def _get_template_engine(ctx):
         return engine_cache
 
     loader_map = {}
-    for module, path in ctx.compiler.loaded_modules.items():
-        template_dir = os.path.join(path, "templates")
+    for name, module in Project.get().modules.items():
+        template_dir = os.path.join(module._path, "templates")
         if os.path.isdir(template_dir):
-            loader_map[module] = FileSystemLoader(template_dir)
+            loader_map[name] = FileSystemLoader(template_dir)
 
     # init the environment
     env = Environment(loader=PrefixLoader(loader_map))
