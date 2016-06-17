@@ -403,11 +403,14 @@ def attr(obj: "any", attr: "string") -> "any":
 
 
 @plugin
-def isset(value: "any") -> "bool":
+def isset(value: "any", attr:"string") -> "bool":
     """
         Returns true if a value has been set
     """
-    return value is not None
+    try:
+       return getattr(obj, attr) is not None
+    except Exception:
+        return False
 
 
 @plugin
