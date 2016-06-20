@@ -27,7 +27,7 @@ from itertools import chain
 
 from inmanta.ast.statements import ExpressionStatement
 from inmanta.ast.variables import Reference
-from inmanta.execute.proxy import DynamicProxy, UnknownException
+from inmanta.execute.proxy import DynamicProxy, UnknownException, RuntimeException
 from inmanta.execute.util import Unknown
 from inmanta.export import dependency_manager
 from inmanta.plugins import plugin, Context, PluginMeta
@@ -748,15 +748,18 @@ def familyof(member: "std::OS", family: "string") -> "bool":
     """
         Determine if member is a member of the given operating system family
     """
-    if member.name == family:
-        return True
-
-    parent = member
-    while parent.family is not None:
-        if parent.name == family:
+    try:
+        if member.name == family:
             return True
-
-        parent = parent.family
+    
+        parent = member
+        while parent.family is not None:
+            if parent.name == family:
+                return True
+    
+            parent = parent.family
+    except RuntimeException:
+        return False
 
     return False
 
