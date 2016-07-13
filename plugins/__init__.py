@@ -812,11 +812,42 @@ def environment_server(ctx: Context) -> "string":
     """
     client = ctx.get_client()
     server_url = client._transport_instance._get_client_config()
-    match = re.search("^http://([^:]+):", server_url)
+    match = re.search("^http[s]?://([^:]+):", server_url)
     if match is not None:
         return match.group(1)
     return Unknown(source=server_url)
 
+@plugin
+def server_username() -> "string":
+    """
+        Return the username of the management server
+    """
+    return Config.get("compiler_rest_transport", "username", None)
+    
+@plugin
+def server_password() -> "string":
+    """
+        Return the password of the management server
+    """
+    return Config.get("compiler_rest_transport", "password", None)
+
+@plugin
+def server_ca(ctx: Context) -> "string":
+    """
+        Return the password of the management server
+    """
+    out = Config.get("compiler_rest_transport", "ssl_ca_cert_file", None)
+    if out is None:
+        return ""
+    
+    file_fd = open(out, 'r')
+    if file_fd is None:
+        raise Exception("Unable to open file %s" % out)
+
+    content = file_fd.read()
+    file_fd.close()
+    
+    return content
 
 @plugin
 def is_set(obj: "any", attribute: "string") -> "bool":
