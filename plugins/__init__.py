@@ -822,14 +822,14 @@ def server_username() -> "string":
     """
         Return the username of the management server
     """
-    return Config.get("compiler_rest_transport", "username", None)
+    return Config.get("compiler_rest_transport", "username", "")
     
 @plugin
 def server_password() -> "string":
     """
         Return the password of the management server
     """
-    return Config.get("compiler_rest_transport", "password", None)
+    return Config.get("compiler_rest_transport", "password", "")
 
 @plugin
 def server_ca(ctx: Context) -> "string":
