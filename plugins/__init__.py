@@ -25,7 +25,7 @@ import uuid
 from operator import attrgetter
 from itertools import chain
 
-from inmanta.ast import OptionalValueException
+from inmanta.ast import OptionalValueException, RuntimeException
 from inmanta.ast.statements import ExpressionStatement
 from inmanta.ast.variables import Reference
 from inmanta.execute.proxy import DynamicProxy, UnknownException
@@ -40,6 +40,7 @@ from inmanta.config import Config
 
 
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
+from jinja2.defaults import DEFAULT_NAMESPACE
 
 
 @plugin
@@ -50,10 +51,12 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
 vcache = {}
 tcache = {}
 
+
 class TemplateStatement(ExpressionStatement):
     """
         Evaluates a template
     """
+
     def __init__(self, env, template_file=None, template_content=None):
         ExpressionStatement.__init__(self)
         self._template = template_file
@@ -65,10 +68,10 @@ class TemplateStatement(ExpressionStatement):
         pass
 
     def requires(self):
-        return  self._requires
+        return self._requires
 
     def requires_emit(self, resolver, queue):
-        return {k:resolver.lookup(k) for k in self._requires}
+        return {k: resolver.lookup(k) for k in self._requires}
 
     def is_file(self):
         """
@@ -88,10 +91,12 @@ class TemplateStatement(ExpressionStatement):
         else:
             source = self._content
 
-        #Parse here, later again,....
+        # Parse here, later again,....
         ast = self._env.parse(source)
         variables = meta.find_undeclared_variables(ast)
-
+        for x in DEFAULT_NAMESPACE:
+            if x in variables:
+                variables.remove(x)
         vcache[self._template] = variables
 
         return variables
@@ -117,12 +122,12 @@ class TemplateStatement(ExpressionStatement):
         except UnknownException as e:
             return e.unknown
 
-
     def __repr__(self):
         return "Template(%s)" % self._template
 
 
 engine_cache = None
+
 
 def _get_template_engine(ctx):
     """
@@ -370,6 +375,16 @@ def capitalize(string: "string") -> "string":
 def type(obj: "any") -> "any":
     value = obj.value
     return value.type().__definition__
+
+
+@plugin
+def is_instance(ctx: Context, obj: "any", cls: "string") -> "bool":
+    t = ctx.get_type(cls)
+    try:
+        t.validate(obj._get_instance())
+    except RuntimeException:
+        return False
+    return True
 
 
 @plugin
@@ -797,6 +812,7 @@ def environment_name(ctx: Context) -> "string":
         Return the name of the environment (as defined on the server)
     """
     env_id = environment()
+
     def call():
         return ctx.get_client().get_environment(id=env_id)
     result = ctx.run_sync(call)
@@ -817,19 +833,22 @@ def environment_server(ctx: Context) -> "string":
         return match.group(1)
     return Unknown(source=server_url)
 
+
 @plugin
 def server_username() -> "string":
     """
         Return the username of the management server
     """
     return Config.get("compiler_rest_transport", "username", "")
-    
+
+
 @plugin
 def server_password() -> "string":
     """
         Return the password of the management server
     """
     return Config.get("compiler_rest_transport", "password", "")
+
 
 @plugin
 def server_ca(ctx: Context) -> "string":
@@ -839,15 +858,16 @@ def server_ca(ctx: Context) -> "string":
     out = Config.get("compiler_rest_transport", "ssl_ca_cert_file", None)
     if out is None:
         return ""
-    
+
     file_fd = open(out, 'r')
     if file_fd is None:
         raise Exception("Unable to open file %s" % out)
 
     content = file_fd.read()
     file_fd.close()
-    
+
     return content
+
 
 @plugin
 def is_set(obj: "any", attribute: "string") -> "bool":
@@ -856,5 +876,3 @@ def is_set(obj: "any", attribute: "string") -> "bool":
     except:
         return False
     return True
-
-
