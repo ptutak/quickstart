@@ -200,3 +200,14 @@ entity State:
     bool allow_restore = true
     string state_id = ""
 end
+
+entity HostGroup:
+    """
+        This entity represents a group of hosts. For example a cluster of machines.
+    """
+    string name
+end
+
+std::Host hosts [0:] -- [0:] HostGroup host_groups
+
+implement HostGroup using std::none
