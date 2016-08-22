@@ -28,7 +28,7 @@ from itertools import chain
 from inmanta.ast import OptionalValueException, RuntimeException
 from inmanta.ast.statements import ExpressionStatement
 from inmanta.ast.variables import Reference
-from inmanta.execute.proxy import DynamicProxy, UnknownException, SequenceProxy, CallProxy
+from inmanta.execute.proxy import DynamicProxy, UnknownException
 from inmanta.execute.util import Unknown
 from inmanta.export import dependency_manager
 from inmanta.plugins import plugin, Context, PluginMeta
@@ -43,8 +43,8 @@ from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 from jinja2.defaults import DEFAULT_NAMESPACE
 from copy import copy
 from jinja2.runtime import Undefined
-from impera.ast import RuntimeException, NotFoundException
-from impera.execute.runtime import ExecutionContext
+from inmanta.ast import NotFoundException
+from inmanta.execute.runtime import ExecutionContext
 import jinja2
 
 
@@ -56,10 +56,12 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
 tcache = {}
 
 engine_cache = None
+
+
 class JinjaDynamicProxy(DynamicProxy):
 
     def __init__(self, instance):
-        super(JinjaDynamicProxy, self).__init__(instance, JinjaDynamicProxy)
+        super(JinjaDynamicProxy, self).__init__(instance)
 
     @classmethod
     def return_value(cls, value):
@@ -76,10 +78,10 @@ class JinjaDynamicProxy(DynamicProxy):
             return value
 
         if hasattr(value, "__len__"):
-            return SequenceProxy(value, baseclass=JinjaDynamicProxy)
+            return SequenceProxy(value)
 
         if hasattr(value, "__call__"):
-            return CallProxy(value, baseclass=JinjaDynamicProxy)
+            return CallProxy(value)
 
         return cls(value)
 
@@ -87,14 +89,60 @@ class JinjaDynamicProxy(DynamicProxy):
         instance = self._get_instance()
         try:
             value = instance.get_attribute(attribute).get_value()
-            return self.baseclass.return_value(value)
+            return JinjaDynamicProxy.return_value(value)
         except OptionalValueException as e:
             return Undefined("variable %s not set on %s" % (instance, attribute), instance, attribute, e)
 
 
+class SequenceProxy(JinjaDynamicProxy):
 
-            if x in variables:
-                variables.remove(x)
+    def __init__(self, iterator):
+        JinjaDynamicProxy.__init__(self, iterator)
+
+    def __getitem__(self, key):
+        instance = self._get_instance()
+        if isinstance(key, str):
+            raise RuntimeException(self, "can not get a attribute %s, %s is a list" % (key, self._get_instance()))
+
+        return JinjaDynamicProxy.return_value(instance[key])
+
+    def __len__(self):
+        return len(self._get_instance())
+
+    def __iter__(self):
+        instance = self._get_instance()
+
+        return IteratorProxy(instance.__iter__())
+
+
+class CallProxy(JinjaDynamicProxy):
+    """
+        Proxy a value that implements a __call__ function
+    """
+
+    def __init__(self, instance):
+        JinjaDynamicProxy.__init__(self, instance)
+
+    def __call__(self, *args, **kwargs):
+        instance = self._get_instance()
+
+        return instance(*args, **kwargs)
+
+
+class IteratorProxy(JinjaDynamicProxy):
+    """
+        Proxy an iterator call
+    """
+
+    def __init__(self, iterator):
+        JinjaDynamicProxy.__init__(self, iterator)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        i = self._get_instance()
+        return JinjaDynamicProxy.return_value(next(i))
 
 
 class ResolverContext(jinja2.runtime.Context):
@@ -106,7 +154,8 @@ class ResolverContext(jinja2.runtime.Context):
             return JinjaDynamicProxy.return_value(raw.get_value())
         except NotFoundException:
             return self.environment.undefined(name=key)
-
+        except OptionalValueException as e:
+            return self.environment.undefined("variable %s not set on %s" % (resolver, key), resolver, key, e)
 
 
 def _get_template_engine(ctx):
@@ -151,7 +200,8 @@ def template(ctx: Context, path: "string"):
 
     resolver = ctx.get_resolver()
 
-    return template.render({"{{resolver": resolver})
+    out = template.render({"{{resolver": resolver})
+    return out
 
 
 @dependency_manager
