@@ -787,7 +787,7 @@ def getfact(context: Context, resource: "any", fact_name: "string", default_valu
     """
         Retrieve a fact of the given resource
     """
-    resource_id = resources.to_id(res)
+    resource_id = resources.to_id(resource)
 
     fact_value = None
     try:
@@ -806,11 +806,11 @@ def getfact(context: Context, resource: "any", fact_name: "string", default_valu
             fact_value = result.result["parameter"]["value"]
         else:
             LOGGER.debug("Param %s of resource %s is unknown", fact_name, resource_id)
-            fact_value = Unknown(source=res)
+            fact_value = Unknown(source=resource)
             unknown_parameters.append({"resource": resource_id, "parameter": fact_name, "source": "fact"})
 
     except ConnectionRefusedError:
-        fact_value = Unknown(source=res)
+        fact_value = Unknown(source=resource)
         unknown_parameters.append({"resource": resource_id, "parameter": fact_name, "source": "fact"})
 
     if isinstance(fact_value, Unknown) and default_value is not None:
