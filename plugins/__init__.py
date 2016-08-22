@@ -33,6 +33,8 @@ from inmanta.execute.util import Unknown
 from inmanta.export import dependency_manager
 from inmanta.plugins import plugin, Context, PluginMeta
 from inmanta.resources import Resource
+from inmanta.export import unknown_parameters
+from inmanta import resources
 from inmanta.module import Project
 from inmanta.facts import get_fact
 from inmanta import protocol
