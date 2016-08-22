@@ -22,6 +22,7 @@ import random
 import re
 import time
 import uuid
+import logging
 from operator import attrgetter
 from itertools import chain
 
@@ -805,7 +806,7 @@ def getfact(context: Context, resource: "any", fact_name: "string", default_valu
         if result.code == 200:
             fact_value = result.result["parameter"]["value"]
         else:
-            LOGGER.debug("Param %s of resource %s is unknown", fact_name, resource_id)
+            logging.getLogger(__name__).debug("Param %s of resource %s is unknown", fact_name, resource_id)
             fact_value = Unknown(source=resource)
             unknown_parameters.append({"resource": resource_id, "parameter": fact_name, "source": "fact"})
 
