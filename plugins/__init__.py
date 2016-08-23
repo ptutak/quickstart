@@ -22,6 +22,7 @@ import random
 import re
 import time
 import uuid
+import logging
 from operator import attrgetter
 from itertools import chain
 
@@ -33,6 +34,8 @@ from inmanta.execute.util import Unknown
 from inmanta.export import dependency_manager
 from inmanta.plugins import plugin, Context, PluginMeta
 from inmanta.resources import Resource
+from inmanta.export import unknown_parameters
+from inmanta import resources
 from inmanta.module import Project
 from inmanta.facts import get_fact
 from inmanta import protocol
@@ -803,11 +806,40 @@ def familyof(member: "std::OS", family: "string") -> "bool":
 
 
 @plugin
-def getfact(resource: "any", fact_name: "string", default_value: "any"=None) -> "any":
+def getfact(context: Context, resource: "any", fact_name: "string", default_value: "any"=None) -> "any":
     """
         Retrieve a fact of the given resource
     """
-    return get_fact(resource, fact_name, default_value)
+    resource_id = resources.to_id(resource)
+
+    fact_value = None
+    try:
+        client = context.get_client()
+
+        env = Config.get("config", "environment", None)
+        if env is None:
+            raise Exception("The environment of this model should be configured in config>environment")
+
+        def call():
+            return client.get_param(tid=env, id=fact_name, resource_id=resource_id)
+
+        result = context.run_sync(call)
+
+        if result.code == 200:
+            fact_value = result.result["parameter"]["value"]
+        else:
+            logging.getLogger(__name__).debug("Param %s of resource %s is unknown", fact_name, resource_id)
+            fact_value = Unknown(source=resource)
+            unknown_parameters.append({"resource": resource_id, "parameter": fact_name, "source": "fact"})
+
+    except ConnectionRefusedError:
+        fact_value = Unknown(source=resource)
+        unknown_parameters.append({"resource": resource_id, "parameter": fact_name, "source": "fact"})
+
+    if isinstance(fact_value, Unknown) and default_value is not None:
+        return default_value
+
+    return fact_value
 
 
 @plugin
