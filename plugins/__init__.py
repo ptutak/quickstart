@@ -41,6 +41,11 @@ from inmanta.config import Config
 
 from jinja2 import Environment, meta, FileSystemLoader, PrefixLoader, Template
 from jinja2.defaults import DEFAULT_NAMESPACE
+from copy import copy
+from jinja2.runtime import Undefined
+from inmanta.ast import NotFoundException
+from inmanta.execute.runtime import ExecutionContext
+import jinja2
 
 
 @plugin
@@ -48,85 +53,109 @@ def unique_file(prefix: "string", seed: "string", suffix: "string", length: "num
     return prefix + hashlib.md5(seed.encode("utf-8")).hexdigest() + suffix
 
 
-vcache = {}
 tcache = {}
 
-
-class TemplateStatement(ExpressionStatement):
-    """
-        Evaluates a template
-    """
-
-    def __init__(self, env, template_file=None, template_content=None):
-        ExpressionStatement.__init__(self)
-        self._template = template_file
-        self._content = template_content
-        self._env = env
-        self._requires = self._get_variables()
-
-    def normalize(self, resolver):
-        pass
-
-    def requires(self):
-        return self._requires
-
-    def requires_emit(self, resolver, queue):
-        return {k: resolver.lookup(k) for k in self._requires}
-
-    def is_file(self):
-        """
-            Use a file?
-        """
-        return self._template is not None and self._content is None
-
-    def _get_variables(self):
-        """
-            Get all variables that are unsresolved
-        """
-        if self._template in vcache:
-            return vcache[self._template]
-
-        if self.is_file():
-            source = self._env.loader.get_source(self._env, self._template)[0]
-        else:
-            source = self._content
-
-        # Parse here, later again,....
-        ast = self._env.parse(source)
-        variables = meta.find_undeclared_variables(ast)
-        for x in DEFAULT_NAMESPACE:
-            if x in variables:
-                variables.remove(x)
-        vcache[self._template] = variables
-
-        return variables
-
-    def execute(self, requires, resolver, queue):
-        """
-            Execute this function
-        """
-        if self._template in tcache:
-            template = tcache[self._template]
-        elif self.is_file():
-            template = self._env.get_template(self._template)
-            tcache[self._template] = template
-        else:
-            template = Template(self._content)
-            tcache[self._template] = template
-
-        variables = {}
-        try:
-            for name in self._requires:
-                variables[name] = DynamicProxy.return_value(requires[name])
-            return template.render(variables)
-        except UnknownException as e:
-            return e.unknown
-
-    def __repr__(self):
-        return "Template(%s)" % self._template
-
-
 engine_cache = None
+
+
+class JinjaDynamicProxy(DynamicProxy):
+
+    def __init__(self, instance):
+        super(JinjaDynamicProxy, self).__init__(instance)
+
+    @classmethod
+    def return_value(cls, value):
+        if value is None:
+            return None
+
+        if isinstance(value, Unknown):
+            raise UnknownException(value)
+
+        if isinstance(value, (str, tuple, int, float, bool)):
+            return copy(value)
+
+        if isinstance(value, DynamicProxy):
+            return value
+
+        if hasattr(value, "__len__"):
+            return SequenceProxy(value)
+
+        if hasattr(value, "__call__"):
+            return CallProxy(value)
+
+        return cls(value)
+
+    def __getattr__(self, attribute):
+        instance = self._get_instance()
+        try:
+            value = instance.get_attribute(attribute).get_value()
+            return JinjaDynamicProxy.return_value(value)
+        except OptionalValueException as e:
+            return Undefined("variable %s not set on %s" % (instance, attribute), instance, attribute, e)
+
+
+class SequenceProxy(JinjaDynamicProxy):
+
+    def __init__(self, iterator):
+        JinjaDynamicProxy.__init__(self, iterator)
+
+    def __getitem__(self, key):
+        instance = self._get_instance()
+        if isinstance(key, str):
+            raise RuntimeException(self, "can not get a attribute %s, %s is a list" % (key, self._get_instance()))
+
+        return JinjaDynamicProxy.return_value(instance[key])
+
+    def __len__(self):
+        return len(self._get_instance())
+
+    def __iter__(self):
+        instance = self._get_instance()
+
+        return IteratorProxy(instance.__iter__())
+
+
+class CallProxy(JinjaDynamicProxy):
+    """
+        Proxy a value that implements a __call__ function
+    """
+
+    def __init__(self, instance):
+        JinjaDynamicProxy.__init__(self, instance)
+
+    def __call__(self, *args, **kwargs):
+        instance = self._get_instance()
+
+        return instance(*args, **kwargs)
+
+
+class IteratorProxy(JinjaDynamicProxy):
+    """
+        Proxy an iterator call
+    """
+
+    def __init__(self, iterator):
+        JinjaDynamicProxy.__init__(self, iterator)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        i = self._get_instance()
+        return JinjaDynamicProxy.return_value(next(i))
+
+
+class ResolverContext(jinja2.runtime.Context):
+
+    def resolve(self, key):
+        resolver = self.parent["{{resolver"]
+        try:
+            raw = resolver.lookup(key)
+            return JinjaDynamicProxy.return_value(raw.get_value())
+        except NotFoundException:
+            return self.environment.undefined(name=key)
+        except OptionalValueException as e:
+            return self.environment.undefined("variable %s not set on %s" % (resolver, key), resolver, key, e)
 
 
 def _get_template_engine(ctx):
@@ -145,6 +174,7 @@ def _get_template_engine(ctx):
 
     # init the environment
     env = Environment(loader=PrefixLoader(loader_map))
+    env.context_class = ResolverContext
 
     # register all plugins as filters
     for name, cls in ctx.get_compiler().get_plugins().items():
@@ -154,7 +184,7 @@ def _get_template_engine(ctx):
     return env
 
 
-@plugin("template", emits_statements=True)
+@plugin("template")
 def template(ctx: Context, path: "string"):
     """
         Execute the template in path in the current context. This function will
@@ -162,11 +192,16 @@ def template(ctx: Context, path: "string"):
     """
     jinja_env = _get_template_engine(ctx)
 
-    stmt = TemplateStatement(jinja_env, template_file=path)
-    stmt.namespace = ["std"]
+    if path in tcache:
+        template = tcache[path]
+    else:
+        template = jinja_env.get_template(path)
+        tcache[path] = template
 
-    ctx.emit_expression(stmt)
+    resolver = ctx.get_resolver()
 
+    out = template.render({"{{resolver": resolver})
+    return out
 
 @dependency_manager
 def dir_before_file(model, resources):
@@ -375,16 +410,6 @@ def capitalize(string: "string") -> "string":
 def type(obj: "any") -> "any":
     value = obj.value
     return value.type().__definition__
-
-
-@plugin
-def is_instance(ctx: Context, obj: "any", cls: "string") -> "bool":
-    t = ctx.get_type(cls)
-    try:
-        t.validate(obj._get_instance())
-    except RuntimeException:
-        return False
-    return True
 
 
 @plugin
@@ -764,18 +789,15 @@ def familyof(member: "std::OS", family: "string") -> "bool":
     """
         Determine if member is a member of the given operating system family
     """
-    try:
-        if member.name == family:
+    if member.name == family:
+        return True
+
+    parent = member
+    while parent.family is not None:
+        if parent.name == family:
             return True
 
-        parent = member
-        while parent.family is not None:
-            if parent.name == family:
-                return True
-
-            parent = parent.family
-    except OptionalValueException:
-        return False
+        parent = parent.family
 
     return False
 
@@ -812,7 +834,6 @@ def environment_name(ctx: Context) -> "string":
         Return the name of the environment (as defined on the server)
     """
     env_id = environment()
-
     def call():
         return ctx.get_client().get_environment(id=env_id)
     result = ctx.run_sync(call)
@@ -828,45 +849,10 @@ def environment_server(ctx: Context) -> "string":
     """
     client = ctx.get_client()
     server_url = client._transport_instance._get_client_config()
-    match = re.search("^http[s]?://([^:]+):", server_url)
+    match = re.search("^http://([^:]+):", server_url)
     if match is not None:
         return match.group(1)
     return Unknown(source=server_url)
-
-
-@plugin
-def server_username() -> "string":
-    """
-        Return the username of the management server
-    """
-    return Config.get("compiler_rest_transport", "username", "")
-
-
-@plugin
-def server_password() -> "string":
-    """
-        Return the password of the management server
-    """
-    return Config.get("compiler_rest_transport", "password", "")
-
-
-@plugin
-def server_ca(ctx: Context) -> "string":
-    """
-        Return the password of the management server
-    """
-    out = Config.get("compiler_rest_transport", "ssl_ca_cert_file", None)
-    if out is None:
-        return ""
-
-    file_fd = open(out, 'r')
-    if file_fd is None:
-        raise Exception("Unable to open file %s" % out)
-
-    content = file_fd.read()
-    file_fd.close()
-
-    return content
 
 
 @plugin
@@ -876,3 +862,5 @@ def is_set(obj: "any", attribute: "string") -> "bool":
     except:
         return False
     return True
+
+
