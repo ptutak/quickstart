@@ -37,7 +37,6 @@ from inmanta.resources import Resource
 from inmanta.export import unknown_parameters
 from inmanta import resources
 from inmanta.module import Project
-from inmanta.facts import get_fact
 from inmanta import protocol
 from inmanta.config import Config
 
