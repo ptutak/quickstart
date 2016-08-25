@@ -169,6 +169,7 @@ def _get_template_engine(ctx):
         return engine_cache
 
     loader_map = {}
+    loader_map[""] = FileSystemLoader(os.path.join(Project.get().project_path, "templates"))
     for name, module in Project.get().modules.items():
         template_dir = os.path.join(module._path, "templates")
         if os.path.isdir(template_dir):
@@ -204,6 +205,7 @@ def template(ctx: Context, path: "string"):
 
     out = template.render({"{{resolver": resolver})
     return out
+
 
 @dependency_manager
 def dir_before_file(model, resources):
@@ -731,11 +733,13 @@ def determine_path(ctx, module_dir, path):
 
     modules = Project.get().modules
 
-    if parts[0] not in modules:
+    if parts[0] == "":
+        module_path = Project.get().project_path
+    elif parts[0] not in modules:
         raise Exception("Module %s does not exist for path %s" %
                         (parts[0], path))
-
-    module_path = modules[parts[0]]._path
+    else:
+        module_path = modules[parts[0]]._path
 
     return os.path.join(module_path, module_dir, os.path.sep.join(parts[1:]))
 
@@ -865,6 +869,7 @@ def environment_name(ctx: Context) -> "string":
         Return the name of the environment (as defined on the server)
     """
     env_id = environment()
+
     def call():
         return ctx.get_client().get_environment(id=env_id)
     result = ctx.run_sync(call)
@@ -893,5 +898,3 @@ def is_set(obj: "any", attribute: "string") -> "bool":
     except:
         return False
     return True
-
-
