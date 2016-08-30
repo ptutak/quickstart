@@ -92,7 +92,7 @@ class JinjaDynamicProxy(DynamicProxy):
         try:
             value = instance.get_attribute(attribute).get_value()
             return JinjaDynamicProxy.return_value(value)
-        except OptionalValueException as e:
+        except (OptionalValueException, NotFoundException) as e:
             return Undefined("variable %s not set on %s" % (instance, attribute), instance, attribute, e)
 
 
@@ -175,7 +175,7 @@ def _get_template_engine(ctx):
             loader_map[name] = FileSystemLoader(template_dir)
 
     # init the environment
-    env = Environment(loader=PrefixLoader(loader_map))
+    env = Environment(loader=PrefixLoader(loader_map), undefined=jinja2.StrictUndefined)
     env.context_class = ResolverContext
 
     # register all plugins as filters
@@ -795,11 +795,14 @@ def familyof(member: "std::OS", family: "string") -> "bool":
         return True
 
     parent = member
-    while parent.family is not None:
-        if parent.name == family:
-            return True
+    try:
+        while parent.family is not None:
+            if parent.name == family:
+                return True
 
-        parent = parent.family
+            parent = parent.family
+    except OptionalValueException:
+        pass
 
     return False
 
