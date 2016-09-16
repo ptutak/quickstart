@@ -48,6 +48,7 @@ from jinja2.runtime import Undefined
 from inmanta.ast import NotFoundException
 from inmanta.execute.runtime import ExecutionContext
 import jinja2
+from jinja2.exceptions import UndefinedError
 
 
 @plugin
@@ -93,7 +94,7 @@ class JinjaDynamicProxy(DynamicProxy):
             value = instance.get_attribute(attribute).get_value()
             return JinjaDynamicProxy.return_value(value)
         except (OptionalValueException, NotFoundException) as e:
-            return Undefined("variable %s not set on %s" % (instance, attribute), instance, attribute, e)
+            return Undefined("variable %s not set on %s" % (attribute, instance), instance, attribute)
 
 
 class SequenceProxy(JinjaDynamicProxy):
@@ -203,8 +204,11 @@ def template(ctx: Context, path: "string"):
 
     resolver = ctx.get_resolver()
 
-    out = template.render({"{{resolver": resolver})
-    return out
+    try:
+        out = template.render({"{{resolver": resolver})
+        return out
+    except UndefinedError as e:
+        raise NotFoundException(ctx.owner, None, e.message)
 
 
 @dependency_manager
