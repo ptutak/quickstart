@@ -1,4 +1,5 @@
 author: Inmanta <code@inmanta.com>
 license: Apache 2.0
 name: std
-version: 0.6.14
+version: 0.6.15
+compiler_version: 2016.4
