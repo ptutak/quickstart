@@ -7,10 +7,11 @@ import drupal
 
 # define the machine we want to deploy Drupal on
 vm1=ip::Host(name="vm1", os=redhat::fedora23, ip="192.168.33.101")
+vm2=ip::Host(name="vm2", os=redhat::fedora23, ip="192.168.33.102")
 
 # add a mysql and apache http server
 web_server=apache::Server(host=vm1)
-mysql_server=mysql::Server(host=vm1)
+mysql_server=mysql::Server(host=vm2)
 
 # deploy drupal in that virtual host
 name=web::Alias(hostname="localhost")
