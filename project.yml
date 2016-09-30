@@ -1,0 +1,5 @@
+name: quickstart
+modulepath: libs
+downloadpath: libs
+repo: https://github.com/inmanta/
+description: A quickstart project that installs a drupal website.
