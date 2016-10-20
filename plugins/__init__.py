@@ -858,12 +858,7 @@ def environment() -> "string":
     if env is None:
         raise Exception("The environment of this model should be configured in config>environment")
 
-    try:
-        uuid.UUID(env)
-    except ValueError:
-        raise Exception("The environment id should be a valid UUID.")
-
-    return env
+    return str(env)
 
 
 @plugin
