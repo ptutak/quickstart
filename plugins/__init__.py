@@ -48,6 +48,7 @@ from jinja2.runtime import Undefined
 from inmanta.ast import NotFoundException
 from inmanta.execute.runtime import ExecutionContext
 import jinja2
+from jinja2.exceptions import UndefinedError
 
 
 @plugin
@@ -93,7 +94,7 @@ class JinjaDynamicProxy(DynamicProxy):
             value = instance.get_attribute(attribute).get_value()
             return JinjaDynamicProxy.return_value(value)
         except (OptionalValueException, NotFoundException) as e:
-            return Undefined("variable %s not set on %s" % (instance, attribute), instance, attribute, e)
+            return Undefined("variable %s not set on %s" % (attribute, instance), instance, attribute)
 
 
 class SequenceProxy(JinjaDynamicProxy):
@@ -203,8 +204,11 @@ def template(ctx: Context, path: "string"):
 
     resolver = ctx.get_resolver()
 
-    out = template.render({"{{resolver": resolver})
-    return out
+    try:
+        out = template.render({"{{resolver": resolver})
+        return out
+    except UndefinedError as e:
+        raise NotFoundException(ctx.owner, None, e.message)
 
 
 @dependency_manager
@@ -853,7 +857,7 @@ def environment() -> "string":
     """
         Return the environment id
     """
-    env = Config.get("config", "environment", None)
+    env = str(Config.get("config", "environment", None))
 
     if env is None:
         raise Exception("The environment of this model should be configured in config>environment")
@@ -883,7 +887,7 @@ def environment_server(ctx: Context) -> "string":
     """
     client = ctx.get_client()
     server_url = client._transport_instance._get_client_config()
-    match = re.search("^http://([^:]+):", server_url)
+    match = re.search("^http[s]?://([^:]+):", server_url)
     if match is not None:
         return match.group(1)
     return Unknown(source=server_url)
@@ -896,3 +900,37 @@ def is_set(obj: "any", attribute: "string") -> "bool":
     except:
         return False
     return True
+
+
+@plugin
+def server_ca():
+    filename = Config.get("compiler_rest_transport", "ssl_ca_cert_file", "")
+    if filename == "":
+        return ""
+    if filename is None:
+        raise Exception("%s does not exist" % filename)
+
+    if not os.path.isfile(filename):
+        raise Exception("%s isn't a valid file" % filename)
+
+    file_fd = open(filename, 'r')
+    if file_fd is None:
+        raise Exception("Unable to open file %s" % filename)
+
+    content = file_fd.read()
+    return content
+
+
+@plugin
+def server_password():
+    return Config.get("compiler_rest_transport", "password", "")
+
+
+@plugin
+def server_username():
+    return Config.get("compiler_rest_transport", "username", "")
+
+
+@plugin
+def server_port():
+    return Config.get("compiler_rest_transport", "port", 8888)
