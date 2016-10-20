@@ -934,3 +934,13 @@ def server_username():
 @plugin
 def server_port():
     return Config.get("compiler_rest_transport", "port", 8888)
+
+@plugin
+def is_instance(ctx: Context, obj: "any", cls: "string") -> "bool":
+    t = ctx.get_type(cls)
+    try:
+        t.validate(obj._get_instance())
+    except RuntimeException:
+        return False
+    return True
+
