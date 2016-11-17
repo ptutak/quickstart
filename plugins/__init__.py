@@ -219,7 +219,7 @@ def dir_before_file(model, resources):
     # loop over all resources to find files
     for _id, resource in resources.items():
 
-        if resource.is_type("std::File"):
+        if resource.is_type("std::File") or resource.is_type("std::Directory"):
             model = resource.model
             host = model.host
 
@@ -316,6 +316,11 @@ def printf(message: "any"):
         Print the given message to stdout
     """
     print(message)
+
+
+@plugin
+def replace(string: "string", old: "string", new: "string") -> "string":
+    return string.replace(old, new)
 
 
 @plugin
