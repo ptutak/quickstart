@@ -156,7 +156,7 @@ class ResolverContext(jinja2.runtime.Context):
             raw = resolver.lookup(key)
             return JinjaDynamicProxy.return_value(raw.get_value())
         except NotFoundException:
-            return self.environment.undefined(name=key)
+            return super(ResolverContext, self).resolve(key)
         except OptionalValueException as e:
             return self.environment.undefined("variable %s not set on %s" % (resolver, key), resolver, key, e)
 
@@ -867,7 +867,7 @@ def environment() -> "string":
     if env is None:
         raise Exception("The environment of this model should be configured in config>environment")
 
-    return env
+    return str(env)
 
 
 @plugin
@@ -939,3 +939,13 @@ def server_username():
 @plugin
 def server_port():
     return Config.get("compiler_rest_transport", "port", 8888)
+
+
+@plugin
+def is_instance(ctx: Context, obj: "any", cls: "string") -> "bool":
+    t = ctx.get_type(cls)
+    try:
+        t.validate(obj._get_instance())
+    except RuntimeException:
+        return False
+    return True

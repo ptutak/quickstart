@@ -182,21 +182,30 @@ class SystemdService(ResourceHandler):
     """
         A handler for services on systems that use systemd
     """
+    def __init__(self, agent, io=None):
+        super().__init__(agent, io)
+
+        self._systemd_path = None
+
     def available(self, resource):
-        return self._io.file_exists("/usr/bin/systemctl")
+        if self._io.file_exists("/usr/bin/systemctl"):
+            self._systemd_path = "/usr/bin/systemctl"
+
+        elif self._io.file_exists("/bin/systemctl"):
+            self._systemd_path = "/bin/systemctl"
+
+        return self._systemd_path is not None
 
     def check_resource(self, resource):
         current = resource.clone()
 
-        exists = self._io.run("/usr/bin/systemctl", ["status", "%s.service" % resource.name])[0]
+        exists = self._io.run(self._systemd_path, ["status", "%s.service" % resource.name])[0]
 
         if re.search('Loaded: error', exists):
             raise ResourceNotFoundExcpetion("The %s service does not exist" % resource.name)
 
-        running = self._io.run("/usr/bin/systemctl",
-                               ["is-active", "%s.service" % resource.name])[2] == 0
-        enabled = self._io.run("/usr/bin/systemctl",
-                               ["is-enabled", "%s.service" % resource.name])[2] == 0
+        running = self._io.run(self._systemd_path, ["is-active", "%s.service" % resource.name])[2] == 0
+        enabled = self._io.run(self._systemd_path, ["is-enabled", "%s.service" % resource.name])[2] == 0
 
         if running:
             current.state = "running"
@@ -221,7 +230,7 @@ class SystemdService(ResourceHandler):
         """
             Reload this resource
         """
-        self._io.run("/usr/bin/systemctl", ["reload-or-restart", "%s.service" % resource.name])
+        self._io.run(self._systemd_path, ["reload-or-restart", "%s.service" % resource.name])
 
     def do_changes(self, resource):
         changes = self.list_changes(resource)
@@ -233,7 +242,7 @@ class SystemdService(ResourceHandler):
                 action = "stop"
 
             # start or stop the service
-            result = self._io.run("/usr/bin/systemctl", [action, "%s.service" % resource.name])
+            result = self._io.run(self._systemd_path, [action, "%s.service" % resource.name])
 
             if re.search("^Failed", result[1]):
                 raise Exception("Unable to %s %s: %s" % (action, resource.name, result[1]))
@@ -246,7 +255,7 @@ class SystemdService(ResourceHandler):
             if not changes["onboot"][1]:
                 action = "disable"
 
-            result = self._io.run("/usr/bin/systemctl", [action, "%s.service" % resource.name])
+            result = self._io.run(self._systemd_path, [action, "%s.service" % resource.name])
             changed = True
 
             if re.search("^Failed", result[1]):
@@ -551,7 +560,7 @@ class SymlinkProvider(ResourceHandler):
 
         if "purged" in changes:
             if changes["purged"][1]:
-                self._io.remove(resource.path)
+                self._io.remove(resource.target)
                 changed = True
                 return changed
 
