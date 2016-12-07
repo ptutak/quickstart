@@ -26,6 +26,7 @@ import logging
 from operator import attrgetter
 from itertools import chain
 
+
 from inmanta.ast import OptionalValueException, RuntimeException
 from inmanta.ast.statements import ExpressionStatement
 from inmanta.ast.variables import Reference
@@ -939,6 +940,27 @@ def server_username():
 @plugin
 def server_port():
     return Config.get("compiler_rest_transport", "port", 8888)
+
+
+@plugin
+def get_env(name: "string", default_value: "string" = None) -> "string":
+    env = os.environ
+    if name in env:
+        return env[name]
+    elif default_value is not None:
+        return default_value
+    else:
+        return Unknown(source=name)
+    
+@plugin
+def get_env_int(name: "string", default_value: "number" = None) -> "number":
+    env = os.environ
+    if name in env:
+        return int(env[name])
+    elif default_value is not None:
+        return default_value
+    else:
+        return Unknown(source=name)
 
 
 @plugin
