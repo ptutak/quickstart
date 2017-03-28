@@ -3,3 +3,18 @@ modulepath: libs
 downloadpath: libs
 repo: https://github.com/inmanta/
 description: A quickstart project that installs a drupal website.
+requires:
+    - apache~=0.2.1
+    - drupal~=0.4.0
+    - exec~=0.4.1
+    - ip~=0.6.1
+    - logging~=0.4
+    - mysql~=0.4.1
+    - net~=0.4
+    - php~=0.3
+    - redhat~=0.6.1
+    - ssh~=0.3
+    - std~=0.12.2
+    - vm~=0.4.3
+    - web~=0.2
+    - yum~=0.3.3
