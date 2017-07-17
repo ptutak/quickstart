@@ -1,5 +1,6 @@
 import ip
 import redhat
+import redhat::epel
 import apache
 import mysql
 import web
