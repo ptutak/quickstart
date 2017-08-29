@@ -7,8 +7,10 @@ import web
 import drupal
 
 # define the machine we want to deploy Drupal on
-vm1=ip::Host(name="vm1", os=redhat::centos7, ip="192.168.33.101", remote_agent=true)
-vm2=ip::Host(name="vm2", os=redhat::centos7, ip="192.168.33.102", remote_agent=true)
+vm1=ip::Host(name="vm1", os=redhat::centos7, ip="192.168.33.101", remote_agent=true,
+             remote_user="vagrant")
+vm2=ip::Host(name="vm2", os=redhat::centos7, ip="192.168.33.102", remote_agent=true,
+             remote_user="vagrant")
 
 # add a mysql and apache http server
 web_server=apache::Server(host=vm1)
